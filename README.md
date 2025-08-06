@@ -1,0 +1,153 @@
+# Fake-Edge-Server
+
+Fake-Edge-Server는 REST API를 제공하고 다른 서버와 TCP 통신을 수행하는 Go 기반 백엔드 서버입니다. 이 서버는 들어오는 HTTP 요청을 처리하고, 필요에 따라 외부 TCP 서버로 요청을 전달합니다.
+
+## 기능
+
+- REST API 서버 제공
+- 지정된 TCP 서버와의 통신
+- SQLite3 데이터베이스 사용 (GORM ORM 사용)
+- 요청 및 TCP 연결 로깅
+- 프론트엔드와의 통합 (React + MUI)
+
+## 프로젝트 구조
+
+```
+├── backend/           # 백엔드 코드
+│   ├── config/        # 설정 관리
+│   ├── database/      # 데이터베이스 연결 관리
+│   ├── handlers/      # HTTP 요청 핸들러
+│   ├── models/        # 데이터 모델
+│   ├── routes/        # 라우트 설정
+│   ├── services/      # 비즈니스 로직 서비스
+│   ├── main.go        # 애플리케이션 진입점
+│   └── go.mod         # Go 모듈 정의
+├── frontend/          # 프론트엔드 코드 (React + MUI)
+└── README.md          # 프로젝트 문서
+```
+
+## 시작하기
+
+### 사전 요구사항
+
+- Go 1.24 이상
+- Node.js 및 npm (프론트엔드 개발용)
+
+### 백엔드 실행
+
+```bash
+# 백엔드 디렉토리로 이동
+cd backend
+
+# 의존성 설치
+go mod tidy
+
+# 서버 실행
+go run main.go
+```
+
+서버는 기본적으로 `http://localhost:8080`에서 실행됩니다.
+
+### 프론트엔드 실행
+
+```bash
+# 프론트엔드 디렉토리로 이동
+cd frontend
+
+# 의존성 설치
+npm install
+
+# 개발 서버 실행
+npm run dev
+```
+
+## API 엔드포인트
+
+### 상태 확인
+
+```
+GET /api/health
+```
+
+### 요청 관리
+
+```
+GET /api/requests         # 모든 요청 목록 조회
+GET /api/requests/:id     # 특정 요청 상세 조회
+```
+
+### TCP 연결 관리
+
+```
+GET /api/tcp-connections  # 모든 TCP 연결 조회
+```
+
+### 프록시 요청
+
+```
+POST /api/proxy           # 기본 TCP 서버로 요청 전달
+POST /api/proxy/:server   # 지정된 TCP 서버로 요청 전달
+```
+
+### TCP 서버 관리
+
+```
+POST /api/tcp             # TCP 서버 등록
+GET /api/tcp              # TCP 서버 목록 조회
+GET /api/tcp/:id          # 특정 TCP 서버 조회
+PUT /api/tcp/:id          # TCP 서버 정보 수정
+DELETE /api/tcp/:id       # TCP 서버 삭제
+```
+
+### TCP 서버 상태 관리
+
+```
+GET /api/tcp/:id/status   # TCP 서버 상태 확인
+POST /api/tcp/:id/start   # TCP 서버 시작
+POST /api/tcp/:id/stop    # TCP 서버 중지
+GET /api/tcp/:id/requests # TCP 서버 요청 목록 조회
+GET /api/tcp/:id/logs     # TCP 서버 로그 목록 조회
+```
+
+### TCP 패킷 관리
+
+```
+POST /api/tcp/:id/packets                # TCP 패킷 생성
+GET /api/tcp/:id/packets                 # TCP 패킷 목록 조회
+GET /api/tcp/:id/packets/:packet_id      # 특정 TCP 패킷 조회
+PUT /api/tcp/:id/packets/:packet_id      # TCP 패킷 수정
+DELETE /api/tcp/:id/packets/:packet_id   # TCP 패킷 삭제
+POST /api/tcp/:id/packets/:packet_id/send # TCP 패킷 전송
+```
+
+#### TCP 서버 등록/수정 요청 형식
+
+```json
+{
+  "name": "서버 이름",
+  "host": "서버 호스트/IP",
+  "port": 9000
+}
+```
+
+## 설정
+
+서버는 `config.json` 파일을 통해 설정할 수 있습니다. 첫 실행 시 기본 설정으로 파일이 자동 생성됩니다.
+
+```json
+{
+  "server_port": "8080",
+  "db_path": "./data.db",
+  "tcp_servers": [
+    {
+      "name": "default-server",
+      "address": "127.0.0.1",
+      "port": "9000"
+    }
+  ]
+}
+```
+
+## 라이센스
+
+MIT

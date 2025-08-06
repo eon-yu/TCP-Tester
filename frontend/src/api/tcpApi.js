@@ -1,0 +1,80 @@
+// API 기본 URL
+const BASE_URL = 'http://localhost:8080/api';
+
+import {fetchWithErrorHandling} from './common';
+
+// TCP 서버 목록 조회
+export async function fetchTCPServers() {
+  return await fetchWithErrorHandling(`${BASE_URL}/tcp`);
+}
+
+// TCP 서버 상세 조회
+export async function fetchTCPServer(id) {
+  return await fetchWithErrorHandling(`${BASE_URL}/tcp/${id}`);
+}
+
+// TCP 서버 생성
+export async function createTCPServer(serverData) {
+  return await fetchWithErrorHandling(`${BASE_URL}/tcp`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(serverData),
+  });
+}
+
+// TCP 서버 수정
+export async function updateTCPServer(id, serverData) {
+  return await fetchWithErrorHandling(`${BASE_URL}/tcp/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(serverData),
+  });
+}
+
+// TCP 서버 삭제
+export async function deleteTCPServer(id) {
+  return await fetchWithErrorHandling(`${BASE_URL}/tcp/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// TCP 서버 상태 확인
+export async function checkTCPStatus(id) {
+  try {
+    const response = await fetch(`${BASE_URL}/tcp/${id}/status`);
+    if (!response.ok) return false;
+    const data = await response.json();
+    return data.status === 'Alive';
+  } catch (error) {
+    console.error('TCP 상태 확인 실패:', error);
+    return false;
+  }
+}
+
+// TCP 서버 시작
+export async function startTCPServer(id) {
+  return await fetchWithErrorHandling(`${BASE_URL}/tcp/${id}/start`, {
+    method: 'POST',
+  });
+}
+
+// TCP 서버 중지
+export async function stopTCPServer(id) {
+  return await fetchWithErrorHandling(`${BASE_URL}/tcp/${id}/stop`, {
+    method: 'POST',
+  });
+}
+
+// TCP 요청 내역 조회
+export async function fetchTCPRequests(tcpId) {
+  return await fetchWithErrorHandling(`${BASE_URL}/tcp/${tcpId}/requests`);
+}
+
+// TCP 로그 조회
+export async function fetchTCPLogs(tcpId) {
+  return await fetchWithErrorHandling(`${BASE_URL}/tcp/${tcpId}/logs`);
+}

@@ -1,0 +1,11 @@
+{
+  "server_port": "8080",
+  "db_path": "./data.db",
+  "tcp_servers": [
+    {
+      "name": "default-server",
+      "address": "127.0.0.1",
+      "port": "9000"
+    }
+  ]
+}
