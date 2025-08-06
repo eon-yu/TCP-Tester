@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 	"net"
 	"net/http"
+	"sort"
 	"strconv"
 )
 
@@ -42,6 +43,11 @@ func (h *TCPPacketHandler) CreateTCPPacket(c *gin.Context) {
 		return
 	}
 	packet.TCPServerID = uint(servIDInt)
+
+	if err := validatePacketData(packet.Data); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	result := h.DB.Create(&packet)
 	if result.Error != nil {
@@ -103,6 +109,11 @@ func (h *TCPPacketHandler) UpdateTCPPacket(c *gin.Context) {
 	// 업데이트할 필드 설정
 	packet.Data = updatedPacket.Data
 	packet.Desc = updatedPacket.Desc
+
+	if err := validatePacketData(packet.Data); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	result = h.DB.Save(&packet)
 	if result.Error != nil {
@@ -188,6 +199,31 @@ func (h *TCPPacketHandler) SendTCPPacket(c *gin.Context) {
 		"response":      hex.EncodeToString(response),
 		"response_text": string(response),
 	})
+}
+
+// validatePacketData는 체인된 데이터의 길이가 타입 크기와 일치하는지 검증합니다.
+func validatePacketData(data models.PacketData) error {
+	// 오프셋 기준으로 정렬
+	sort.Slice(data, func(i, j int) bool { return data[i].Offset < data[j].Offset })
+
+	for i := 0; i < len(data); {
+		item := data[i]
+		if item.IsChained {
+			j := i
+			for j+1 < len(data) && data[j+1].IsChained && data[j+1].Offset == data[j].Offset+1 {
+				j++
+			}
+			group := data[i : j+1]
+			expected := item.Type.Size()
+			if expected > 0 && len(group) != expected {
+				return fmt.Errorf("offset %d: 체인된 길이가 %d바이트가 아닙니다", item.Offset, expected)
+			}
+			i = j + 1
+		} else {
+			i++
+		}
+	}
+	return nil
 }
 
 // packetDataToBytes는 패킷 데이터를 바이트 배열로 변환합니다.

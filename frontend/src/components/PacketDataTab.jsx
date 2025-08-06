@@ -114,6 +114,7 @@ const PacketDataTab = ({ currentTCP }) => {
 
   // 패킷 저장
   const handleSavePacket = async () => {
+    if (!validateChainLengths()) return;
     try {
       setLoading(true);
 
@@ -232,16 +233,21 @@ const PacketDataTab = ({ currentTCP }) => {
 
   // 타입 선택 후 행 체인 설정 적용
   const applyChainType = () => {
+    const typeInfo = DATA_TYPES.find(t => t.value === selectedType);
+    const required = typeInfo?.size || 0;
+
+    if (required > 0 && selectedRows.length !== required) {
+      showAlert(`${typeInfo.label} 타입은 ${required}칸을 선택해야 합니다`, 'error');
+      return;
+    }
+
     const sortedRows = [...selectedRows].sort((a, b) => a - b);
 
-    // 선택된 모든 행을 업데이트
     const updatedData = packetData.map(item => {
       if (selectedRows.includes(item.offset)) {
-        // 첫 번째 항목에만 선택된 타입 설정
         if (item.offset === sortedRows[0]) {
           return { ...item, type: selectedType, is_chained: true };
         }
-        // 나머지 항목은 is_chained만 true로 설정
         return { ...item, is_chained: true };
       }
       return item;
@@ -269,19 +275,106 @@ const PacketDataTab = ({ currentTCP }) => {
 
   // 체인된 값 표시
   const getDisplayValue = (item) => {
-    // 체인되지 않은 항목은 그대로 표시
-    if (!item.is_chained) {
-      return item.value.toString();
-    }
+    if (!item.is_chained) return '';
 
-    // 체인된 항목 중 첫 번째 항목만 계산된 값 표시
-    const chainedItems = getChainedItems(item.offset);
-    if (chainedItems.length > 0 && chainedItems[0].offset === item.offset) {
-      const type = DATA_TYPES.find(t => t.value === item.type);
-      return `[${type.label}] ${chainedItems.length}바이트`;
+    const chain = getChainedItems(item.offset);
+    if (chain.length > 0 && chain[0].offset === item.offset) {
+      const bytes = chain.map(ci => ci.value);
+      const buffer = new ArrayBuffer(bytes.length);
+      const view = new DataView(buffer);
+      bytes.forEach((b, i) => view.setUint8(i, b));
+      switch (item.type) {
+        case 0: return view.getInt8(0).toString();
+        case 1: return view.getInt16(0, true).toString();
+        case 2: return view.getInt32(0, true).toString();
+        case 3: return view.getBigInt64(0, true).toString();
+        case 4: return view.getUint8(0).toString();
+        case 5: return view.getUint16(0, true).toString();
+        case 6: return view.getUint32(0, true).toString();
+        case 7: return view.getBigUint64(0, true).toString();
+        case 8: return view.getFloat32(0, true).toString();
+        case 9: return view.getFloat64(0, true).toString();
+        case 10:
+          return new TextDecoder().decode(new Uint8Array(bytes));
+        case 11:
+          return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
+        default:
+          return '';
+      }
     }
-
     return 'Chained';
+  };
+
+  // 체인된 값 변경
+  const handleDisplayChange = (offset, value) => {
+    const chain = getChainedItems(offset);
+    if (chain.length === 0) return;
+    const type = chain[0].type;
+    const buffer = new ArrayBuffer(chain.length);
+    const view = new DataView(buffer);
+
+    try {
+      switch (type) {
+        case 0:
+          view.setInt8(0, parseInt(value) || 0);
+          break;
+        case 1:
+          view.setInt16(0, parseInt(value) || 0, true);
+          break;
+        case 2:
+          view.setInt32(0, parseInt(value) || 0, true);
+          break;
+        case 3:
+          view.setBigInt64(0, BigInt(value || 0), true);
+          break;
+        case 4:
+          view.setUint8(0, parseInt(value) || 0);
+          break;
+        case 5:
+          view.setUint16(0, parseInt(value) || 0, true);
+          break;
+        case 6:
+          view.setUint32(0, parseInt(value) || 0, true);
+          break;
+        case 7:
+          view.setBigUint64(0, BigInt(value || 0), true);
+          break;
+        case 8:
+          view.setFloat32(0, parseFloat(value) || 0, true);
+          break;
+        case 9:
+          view.setFloat64(0, parseFloat(value) || 0, true);
+          break;
+        case 10: {
+          const bytes = Array.from(new TextEncoder().encode(value || ''));
+          bytes.forEach((b, i) => view.setUint8(i, bytes[i] || 0));
+          break;
+        }
+        case 11: {
+          const cleaned = (value || '').replace(/\s+/g, '');
+          for (let i = 0; i < chain.length; i++) {
+            const byteStr = cleaned.slice(i * 2, i * 2 + 2);
+            view.setUint8(i, parseInt(byteStr || '0', 16));
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    } catch (e) {
+      console.error('Display 값 변환 실패:', e);
+      return;
+    }
+
+    const bytes = new Uint8Array(buffer);
+    const updated = packetData.map(item => {
+      const idx = chain.findIndex(ci => ci.offset === item.offset);
+      if (idx !== -1) {
+        return { ...item, value: bytes[idx] };
+      }
+      return item;
+    });
+    setPacketData(updated);
   };
 
   // 특정 오프셋을 포함하는 체인된 항목들 가져오기
@@ -351,6 +444,31 @@ const PacketDataTab = ({ currentTCP }) => {
     }
 
     return chainedGroup;
+  };
+
+  // 전체 체인 길이 검증
+  const validateChainLengths = () => {
+    const sorted = [...packetData].sort((a, b) => a.offset - b.offset);
+    for (let i = 0; i < sorted.length;) {
+      const item = sorted[i];
+      if (item.is_chained) {
+        let j = i;
+        while (j + 1 < sorted.length && sorted[j + 1].is_chained && sorted[j + 1].offset === sorted[j].offset + 1) {
+          j++;
+        }
+        const group = sorted.slice(i, j + 1);
+        const typeInfo = DATA_TYPES.find(t => t.value === group[0].type);
+        const expected = typeInfo?.size || 0;
+        if (expected > 0 && group.length !== expected) {
+          showAlert(`오프셋 ${group[0].offset}부터 ${expected}칸이 필요합니다`, 'error');
+          return false;
+        }
+        i = j + 1;
+      } else {
+        i++;
+      }
+    }
+    return true;
   };
 
   // 패킷 전송
@@ -501,7 +619,7 @@ const PacketDataTab = ({ currentTCP }) => {
           )}
 
           <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
-            <Table stickyHeader size="small">
+            <Table stickyHeader size="small" sx={{ '& th, & td': { border: '1px solid rgba(224,224,224,1)' } }}>
               <TableHead>
                 <TableRow>
                   <TableCell>Offset</TableCell>
@@ -546,10 +664,26 @@ const PacketDataTab = ({ currentTCP }) => {
                           inputProps={{ min: -128, max: 127 }}
                           sx={{ width: 80 }}
                           onClick={(e) => e.stopPropagation()}
+                          disabled={item.is_chained}
                         />
                       </TableCell>
                       <TableCell>
-                        {getDisplayValue(item)}
+                        {item.is_chained ? (
+                          (() => {
+                            const chain = getChainedItems(item.offset);
+                            if (chain.length > 0 && chain[0].offset === item.offset) {
+                              return (
+                                <TextField
+                                  value={getDisplayValue(item)}
+                                  onChange={(e) => handleDisplayChange(item.offset, e.target.value)}
+                                  size="small"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              );
+                            }
+                            return 'Chained';
+                          })()
+                        ) : ''}
                       </TableCell>
                       <TableCell>
                         <TextField
