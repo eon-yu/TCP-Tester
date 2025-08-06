@@ -92,6 +92,7 @@ const PacketDataTab = ({ currentTCP }) => {
   const [selectedType, setSelectedType] = useState(0);
   const [alertInfo, setAlertInfo] = useState({ open: false, message: '', severity: 'info' });
   const [responseDialog, setResponseDialog] = useState({ open: false, response: null });
+  const [confirmUnchain, setConfirmUnchain] = useState({ open: false, groups: [] });
 
   // 패킷 데이터 로드
   const loadPackets = async () => {
@@ -314,21 +315,37 @@ const PacketDataTab = ({ currentTCP }) => {
     showAlert('선택한 행이 성공적으로 묶였습니다', 'success');
   };
 
-  // 행 체인 해제
-  const handleUnchainRows = () => {
-    const offsets = new Set();
+  // 행 체인 해제 확인
+  const initiateUnchainRows = () => {
+    const groups = [];
+    const seen = new Set();
     selectedRows.forEach(offset => {
-      getChainedItems(offset).forEach(ci => offsets.add(ci.offset));
+      const chain = getChainedItems(offset);
+      if (chain.length > 0) {
+        const start = chain[0].offset;
+        if (!seen.has(start)) {
+          seen.add(start);
+          groups.push(chain.map(ci => ci.offset));
+        }
+      }
     });
-    const updatedData = packetData.map(item => (
-      offsets.has(item.offset) ? { ...item, is_chained: false } : item
-    ));
+    if (groups.length === 0) return;
+    setConfirmUnchain({ open: true, groups });
+  };
 
+  const handleUnchainRows = () => {
+    const offsets = new Set(confirmUnchain.groups.flat());
+    const updatedData = packetData.map(item => (
+      offsets.has(item.offset) ? { ...item, is_chained: false, type: 0 } : item
+    ));
     setPacketData(updatedData);
     setSelectedRows([]);
     autoSave(updatedData);
     showAlert('선택한 행의 묶음이 해제되었습니다', 'success');
+    setConfirmUnchain({ open: false, groups: [] });
   };
+
+  const cancelUnchain = () => setConfirmUnchain({ open: false, groups: [] });
 
   const autoSave = async (dataToSave) => {
     if (!selectedPacket) return;
@@ -346,47 +363,66 @@ const PacketDataTab = ({ currentTCP }) => {
 
   // 체인된 값 표시
   const getDisplayValue = (item) => {
-    if (!item.is_chained) return '';
+    const typeInfo = DATA_TYPES.find(t => t.value === item.type);
 
-    const chain = getChainedItems(item.offset);
-    if (chain.length > 0 && chain[0].offset === item.offset) {
-      const typeInfo = DATA_TYPES.find(t => t.value === item.type);
-      const required = typeInfo ? typeInfo.size : 0;
-      if (required > 0 && chain.length < required) {
-        return '';
-      }
-
-      const bytes = chain.map(ci => ci.value);
-      const buffer = new ArrayBuffer(bytes.length);
-      const view = new DataView(buffer);
-      bytes.forEach((b, i) => view.setUint8(i, b));
-      switch (item.type) {
-        case 0: return view.getInt8(0).toString();
-        case 1: return view.getInt16(0, true).toString();
-        case 2: return view.getInt32(0, true).toString();
-        case 3: return view.getBigInt64(0, true).toString();
-        case 4: return view.getUint8(0).toString();
-        case 5: return view.getUint16(0, true).toString();
-        case 6: return view.getUint32(0, true).toString();
-        case 7: return view.getBigUint64(0, true).toString();
-        case 8: return view.getFloat32(0, true).toString();
-        case 9: return view.getFloat64(0, true).toString();
-        case 10:
-          return new TextDecoder().decode(new Uint8Array(bytes));
-        case 11:
-          return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
-        default:
+    // 체인된 그룹의 시작인 경우 전체 값을 계산
+    if (item.is_chained) {
+      const chain = getChainedItems(item.offset);
+      if (chain.length > 0 && chain[0].offset === item.offset) {
+        const required = typeInfo ? typeInfo.size : 0;
+        if (required > 0 && chain.length < required) {
           return '';
+        }
+
+        const bytes = chain.map(ci => ci.value);
+        const buffer = new ArrayBuffer(bytes.length);
+        const view = new DataView(buffer);
+        bytes.forEach((b, i) => view.setUint8(i, b));
+        switch (item.type) {
+          case 0: return view.getInt8(0).toString();
+          case 1: return view.getInt16(0, true).toString();
+          case 2: return view.getInt32(0, true).toString();
+          case 3: return view.getBigInt64(0, true).toString();
+          case 4: return view.getUint8(0).toString();
+          case 5: return view.getUint16(0, true).toString();
+          case 6: return view.getUint32(0, true).toString();
+          case 7: return view.getBigUint64(0, true).toString();
+          case 8: return view.getFloat32(0, true).toString();
+          case 9: return view.getFloat64(0, true).toString();
+          case 10:
+            return new TextDecoder().decode(new Uint8Array(bytes));
+          case 11:
+            return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
+          default:
+            return '';
+        }
       }
+      return '';
     }
-    return 'Chained';
+
+    // 체인이 아닌 경우 단일 값 처리
+    switch (item.type) {
+      case 10:
+        return String.fromCharCode(item.value || 0);
+      case 11:
+        return (item.value || 0).toString(16).padStart(2, '0');
+      default:
+        return (item.value ?? '').toString();
+    }
   };
 
-  // 체인된 값 변경
+  // 체인된 값 변경 및 단일 값 처리
   const handleDisplayChange = (offset, value) => {
     if (value === '') value = '0';
-    const chain = getChainedItems(offset);
-    if (chain.length === 0) return;
+    let chain = getChainedItems(offset);
+
+    // 체인이 아닌 경우 단일 항목을 체인처럼 처리
+    if (chain.length === 0) {
+      const target = packetData.find(item => item.offset === offset);
+      if (!target) return;
+      chain = [target];
+    }
+
     const type = chain[0].type;
     const typeInfo = DATA_TYPES.find(t => t.value === type);
     const required = typeInfo ? typeInfo.size : 0;
@@ -746,7 +782,7 @@ const PacketDataTab = ({ currentTCP }) => {
               <Button
                 variant="outlined"
                 startIcon={<LinkOffIcon />}
-                onClick={handleUnchainRows}
+                onClick={initiateUnchainRows}
                 disabled={selectedRows.length === 0}
               >
                 묶음 해제
@@ -808,22 +844,44 @@ const PacketDataTab = ({ currentTCP }) => {
                         {item.offset}
                       </TableCell>
                       <TableCell>
-                        <input
-                          type="number"
-                          value={item.value}
-                          onChange={(e) => handleRowChange(item.offset, 'value', parseInt(e.target.value) || 0)}
-                          min={range.min}
-                          max={range.max}
-                          style={{ width: 80 }}
-                          onClick={(e) => e.stopPropagation()}
-                          disabled={item.is_chained}
-                        />
-                        {showTypeLabel && <span style={{ marginLeft: 4 }}>{typeLabel}</span>}
-                      </TableCell>
-                      <TableCell>
                         {item.is_chained ? (
                           (() => {
-                            if (chain.length > 0 && chain[0].offset === item.offset) {
+                            if (isChainStart) {
+                              if (item.type === 10 || item.type === 11) {
+                                return (
+                                  <TextField
+                                    value={getDisplayValue(item)}
+                                    onChange={(e) => handleDisplayChange(item.offset, e.target.value)}
+                                    size="small"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                );
+                              }
+                              return (
+                                <input
+                                  type="number"
+                                  value={getDisplayValue(item)}
+                                  onChange={(e) => handleDisplayChange(item.offset, e.target.value)}
+                                  min={range.min}
+                                  max={range.max}
+                                  style={{ width: 80 }}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              );
+                            }
+                            return (
+                              <input
+                                type="number"
+                                value={item.value}
+                                disabled
+                                style={{ width: 80 }}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            );
+                          })()
+                        ) : (
+                          (() => {
+                            if (item.type === 10 || item.type === 11) {
                               return (
                                 <TextField
                                   value={getDisplayValue(item)}
@@ -833,9 +891,23 @@ const PacketDataTab = ({ currentTCP }) => {
                                 />
                               );
                             }
-                            return 'Chained';
+                            return (
+                              <input
+                                type="number"
+                                value={item.value}
+                                onChange={(e) => handleRowChange(item.offset, 'value', parseInt(e.target.value) || 0)}
+                                min={range.min}
+                                max={range.max}
+                                style={{ width: 80 }}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            );
                           })()
-                        ) : ''}
+                        )}
+                        {showTypeLabel && <span style={{ marginLeft: 4 }}>{typeLabel}</span>}
+                      </TableCell>
+                      <TableCell>
+                        {getDisplayValue(item)}
                       </TableCell>
                       <TableCell>
                         <TextField
@@ -931,6 +1003,28 @@ const PacketDataTab = ({ currentTCP }) => {
         </DialogActions>
       </Dialog>
 
+      {/* 묶음 해제 확인 대화상자 */}
+      <Dialog open={confirmUnchain.open} onClose={cancelUnchain}>
+        <DialogTitle>묶음 해제</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            선택한 항목은 다음 묶음에 포함되어 있습니다:
+          </Typography>
+          <Box component="ul" sx={{ pl: 2, mb: 0 }}>
+            {confirmUnchain.groups.map((g, idx) => (
+              <li key={idx}>오프셋 {g[0]} - {g[g.length - 1]}</li>
+            ))}
+          </Box>
+          <Typography variant="body2" sx={{ mt: 2 }}>
+            이 묶음들을 모두 해제하시겠습니까?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelUnchain}>취소</Button>
+          <Button onClick={handleUnchainRows} color="primary" variant="contained">해제</Button>
+        </DialogActions>
+      </Dialog>
+
       {/* 오프셋 컨텍스트 메뉴 */}
       <Menu
         open={contextMenu !== null}
@@ -956,7 +1050,7 @@ const PacketDataTab = ({ currentTCP }) => {
           if (chain.length > 0) {
             const offsets = chain.map(ci => ci.offset);
             const updated = packetData.map(item => (
-              offsets.includes(item.offset) ? { ...item, is_chained: false } : item
+              offsets.includes(item.offset) ? { ...item, is_chained: false, type: 0 } : item
             ));
             setPacketData(updated);
             autoSave(updated);
