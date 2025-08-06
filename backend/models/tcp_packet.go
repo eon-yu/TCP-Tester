@@ -27,6 +27,23 @@ const (
 	TypeHex
 )
 
+// Size는 각 데이터 타입이 차지하는 바이트 수를 반환합니다.
+// 문자열과 HEX 타입은 가변 길이이므로 0을 반환합니다.
+func (dt DataType) Size() int {
+	switch dt {
+	case TypeInt8, TypeUint8:
+		return 1
+	case TypeInt16, TypeUint16:
+		return 2
+	case TypeInt32, TypeUint32, TypeFloat32:
+		return 4
+	case TypeInt64, TypeUint64, TypeFloat64:
+		return 8
+	default:
+		return 0
+	}
+}
+
 // PacketDataItem은 패킷의 개별 데이터 항목을 나타냅니다.
 type PacketDataItem struct {
 	Offset    int      `json:"offset"`
