@@ -44,9 +44,9 @@ func TestTCPService_SendRequest_Mock(t *testing.T) {
 
 	// 테스트용 TCP 서버 데이터 생성
 	server := models.TCPServer{
-		Name:    "test-server",
-		Address: "localhost:8080",
-		Status:  "active",
+		Name: "test-server",
+		Host: "localhost",
+		Port: 8080,
 	}
 	db.Create(&server)
 
@@ -61,13 +61,12 @@ func TestTCPService_SendRequest_Mock(t *testing.T) {
 // TCPConnection 관련 서비스 테스트
 func TestTCPService_ConnectionManagement(t *testing.T) {
 	db := setupTestDB()
-	service := NewTCPService(db)
 
 	// TCP 연결 정보 생성 테스트
 	connection := &models.TCPConnection{
 		ServerName: "test-server",
-		Address:    "localhost:8080",
-		Status:     "connecting",
+		ServerAddr: "localhost:8080",
+		Success:    false,
 	}
 
 	result := db.Create(connection)
@@ -75,7 +74,7 @@ func TestTCPService_ConnectionManagement(t *testing.T) {
 	assert.NotZero(t, connection.ID)
 
 	// 연결 상태 업데이트
-	connection.Status = "connected"
+	connection.Success = true
 	result = db.Save(connection)
 	assert.NoError(t, result.Error)
 
@@ -83,7 +82,7 @@ func TestTCPService_ConnectionManagement(t *testing.T) {
 	var retrievedConnection models.TCPConnection
 	result = db.First(&retrievedConnection, connection.ID)
 	assert.NoError(t, result.Error)
-	assert.Equal(t, "connected", retrievedConnection.Status)
+	assert.Equal(t, true, retrievedConnection.Success)
 }
 
 // RequestService 테스트 (가정)
@@ -132,50 +131,15 @@ func TestRequestService_GetRequests(t *testing.T) {
 	assert.Len(t, retrievedRequests, 3)
 }
 
-func TestRequestService_GetRequestWithTCPData(t *testing.T) {
-	db := setupTestDB()
-
-	// 관련 데이터 생성
-	request := models.Request{
-		Method: "POST",
-		Path:   "/api/data",
-		IP:     "127.0.0.1",
-	}
-	db.Create(&request)
-
-	connection := models.TCPConnection{
-		ServerName: "test-server",
-		Address:    "localhost:8080",
-		Status:     "connected",
-	}
-	db.Create(&connection)
-
-	packet := models.TCPPacket{
-		RequestID:    request.ID,
-		ConnectionID: connection.ID,
-		Direction:    "outbound",
-		Data:         "test packet",
-		Size:         11,
-	}
-	db.Create(&packet)
-
-	// Request와 관련 TCP 데이터 조회
-	var requestWithTCP models.Request
-	result := db.Preload("TCPRequests").First(&requestWithTCP, request.ID)
-	assert.NoError(t, result.Error)
-	assert.Len(t, requestWithTCP.TCPRequests, 1)
-	assert.Equal(t, "outbound", requestWithTCP.TCPRequests[0].Direction)
-}
-
 // TCPServer 관련 서비스 테스트
 func TestTCPServerService_ManageServers(t *testing.T) {
 	db := setupTestDB()
 
 	// TCP 서버 생성
 	server := models.TCPServer{
-		Name:    "production-server",
-		Address: "prod.example.com:8080",
-		Status:  "active",
+		Name: "production-server",
+		Host: "prod.example.com",
+		Port: 8080,
 	}
 
 	result := db.Create(&server)
@@ -190,7 +154,7 @@ func TestTCPServerService_ManageServers(t *testing.T) {
 	assert.Equal(t, "production-server", servers[0].Name)
 
 	// 서버 상태 업데이트
-	server.Status = "inactive"
+	server.Port = 9090
 	result = db.Save(&server)
 	assert.NoError(t, result.Error)
 
@@ -198,7 +162,7 @@ func TestTCPServerService_ManageServers(t *testing.T) {
 	var updatedServer models.TCPServer
 	result = db.First(&updatedServer, server.ID)
 	assert.NoError(t, result.Error)
-	assert.Equal(t, "inactive", updatedServer.Status)
+	assert.Equal(t, 9090, updatedServer.Port)
 }
 
 // 패킷 처리 서비스 테스트
@@ -206,47 +170,22 @@ func TestPacketService_ProcessPackets(t *testing.T) {
 	db := setupTestDB()
 
 	// 관련 데이터 생성
-	request := models.Request{Method: "GET", Path: "/test", IP: "127.0.0.1"}
-	db.Create(&request)
-
-	connection := models.TCPConnection{ServerName: "test", Address: "localhost:8080", Status: "connected"}
+	connection := models.TCPConnection{ServerName: "test", ServerAddr: "localhost:8080", Success: true}
 	db.Create(&connection)
 
-	// 여러 패킷 생성
-	packets := []models.TCPPacket{
-		{
-			RequestID:      request.ID,
-			ConnectionID:   connection.ID,
-			Direction:      "outbound",
-			Data:           "request data",
-			Size:           12,
-			ProcessingTime: 50,
-		},
-		{
-			RequestID:      request.ID,
-			ConnectionID:   connection.ID,
-			Direction:      "inbound",
-			Data:           "response data",
-			Size:           13,
-			ProcessingTime: 30,
-		},
+	// 패킷 생성
+	packet := models.TCPPacket{
+		TCPServerID: connection.ID,
+		Data:        models.PacketData{{Offset: 0, Value: 1, Type: models.TypeInt8}},
+		Desc:        "sample",
 	}
-
-	for _, packet := range packets {
-		result := db.Create(&packet)
-		assert.NoError(t, result.Error)
-	}
-
-	// 특정 요청의 패킷들 조회
-	var requestPackets []models.TCPPacket
-	result := db.Where("request_id = ?", request.ID).Find(&requestPackets)
+	result := db.Create(&packet)
 	assert.NoError(t, result.Error)
-	assert.Len(t, requestPackets, 2)
 
-	// 방향별 패킷 조회
-	var outboundPackets []models.TCPPacket
-	result = db.Where("direction = ?", "outbound").Find(&outboundPackets)
+	// 패킷 조회
+	var packets []models.TCPPacket
+	result = db.Where("tcp_server_id = ?", connection.ID).Find(&packets)
 	assert.NoError(t, result.Error)
-	assert.Len(t, outboundPackets, 1)
-	assert.Equal(t, "request data", outboundPackets[0].Data)
+	assert.Len(t, packets, 1)
+	assert.Equal(t, "sample", packets[0].Desc)
 }

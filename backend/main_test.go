@@ -65,9 +65,9 @@ func setupTestData() {
 	})
 
 	testDB.Create(&models.TCPServer{
-		Name:    "test-server",
-		Address: "localhost:8080",
-		Status:  "active",
+		Name: "test-server",
+		Host: "localhost",
+		Port: 8080,
 	})
 }
 
@@ -104,7 +104,7 @@ func makeRequest(method, url string, body interface{}) (*httptest.ResponseRecord
 }
 
 func TestHealthCheck(t *testing.T) {
-	recorder, err := makeRequest("GET", "/api/v1/health", nil)
+	recorder, err := makeRequest("GET", "/api/health", nil)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, recorder.Code)
 
@@ -119,8 +119,8 @@ func TestRequestsAPI(t *testing.T) {
 	setupTestData()
 	defer cleanupTestData()
 
-	// GET /api/v1/requests
-	recorder, err := makeRequest("GET", "/api/v1/requests", nil)
+	// GET /api/requests
+	recorder, err := makeRequest("GET", "/api/requests", nil)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, recorder.Code)
 
@@ -135,8 +135,8 @@ func TestTCPConnectionsAPI(t *testing.T) {
 	setupTestData()
 	defer cleanupTestData()
 
-	// GET /api/v1/tcp-connections
-	recorder, err := makeRequest("GET", "/api/v1/tcp-connections", nil)
+	// GET /api/tcp-connections
+	recorder, err := makeRequest("GET", "/api/tcp-connections", nil)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, recorder.Code)
 }
@@ -144,9 +144,9 @@ func TestTCPConnectionsAPI(t *testing.T) {
 func TestProxyAPI(t *testing.T) {
 	defer cleanupTestData()
 
-	// POST /api/v1/proxy
+	// POST /api/proxy
 	testBody := map[string]string{"message": "test proxy"}
-	recorder, err := makeRequest("POST", "/api/v1/proxy", testBody)
+	recorder, err := makeRequest("POST", "/api/proxy", testBody)
 	assert.NoError(t, err)
 
 	// TCP 서버가 실제로 없으므로 에러가 예상됨
