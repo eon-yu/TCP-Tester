@@ -7,7 +7,6 @@ import (
 // TCPServer는 TCP 서버 연결 정보를 저장하는 모델입니다.
 type TCPServer struct {
 	gorm.Model
-	Id   uint64 `json:"id" gorm:"primaryKey;autoIncrement:true"`
 	Name string `json:"name" gorm:"uniqueIndex"`
 	Host string `json:"host"`
 	Port int    `json:"port"`

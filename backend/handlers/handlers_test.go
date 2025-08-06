@@ -39,13 +39,13 @@ func setupTestRouter(db *gorm.DB) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
-	// TCP 서비스 모킹 (실제 TCP 연결 없이 테스트)
-	tcpService := &services.TCPService{}
+	// TCP 서비스 설정 (실제 TCP 연결 없이 테스트)
+	tcpService := services.NewTCPService(db)
 
 	// 실제 APIHandler 사용
 	handler := NewAPIHandler(db, tcpService)
 
-	api := router.Group("/api/v1")
+	api := router.Group("/api")
 	{
 		api.GET("/health", handler.GetHealth)
 		api.GET("/requests", handler.GetRequests)
@@ -62,7 +62,7 @@ func TestGetHealth(t *testing.T) {
 	db := setupTestDB()
 	router := setupTestRouter(db)
 
-	req, _ := http.NewRequest("GET", "/api/v1/health", nil)
+	req, _ := http.NewRequest("GET", "/api/health", nil)
 	resp := httptest.NewRecorder()
 	router.ServeHTTP(resp, req)
 
@@ -88,7 +88,7 @@ func TestGetRequests(t *testing.T) {
 	}
 	db.Create(&request)
 
-	req, _ := http.NewRequest("GET", "/api/v1/requests", nil)
+	req, _ := http.NewRequest("GET", "/api/requests", nil)
 	resp := httptest.NewRecorder()
 	router.ServeHTTP(resp, req)
 
@@ -115,7 +115,7 @@ func TestGetRequestByID(t *testing.T) {
 	}
 	db.Create(&request)
 
-	req, _ := http.NewRequest("GET", "/api/v1/requests/1", nil)
+	req, _ := http.NewRequest("GET", "/api/requests/1", nil)
 	resp := httptest.NewRecorder()
 	router.ServeHTTP(resp, req)
 
@@ -132,7 +132,7 @@ func TestGetRequestByID_NotFound(t *testing.T) {
 	db := setupTestDB()
 	router := setupTestRouter(db)
 
-	req, _ := http.NewRequest("GET", "/api/v1/requests/9999", nil)
+	req, _ := http.NewRequest("GET", "/api/requests/9999", nil)
 	resp := httptest.NewRecorder()
 	router.ServeHTTP(resp, req)
 
@@ -156,7 +156,7 @@ func TestGetTCPConnections(t *testing.T) {
 	}
 	db.Create(&connection)
 
-	req, _ := http.NewRequest("GET", "/api/v1/tcp-connections", nil)
+	req, _ := http.NewRequest("GET", "/api/tcp-connections", nil)
 	resp := httptest.NewRecorder()
 	router.ServeHTTP(resp, req)
 
@@ -175,7 +175,7 @@ func TestProxyRequest(t *testing.T) {
 
 	// 프록시 요청 테스트 (실제 TCP 서버 없이)
 	testBody := `{"message": "test proxy request"}`
-	req, _ := http.NewRequest("POST", "/api/v1/proxy/test-server", bytes.NewBufferString(testBody))
+	req, _ := http.NewRequest("POST", "/api/proxy/test-server", bytes.NewBufferString(testBody))
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
 	router.ServeHTTP(resp, req)
@@ -188,7 +188,7 @@ func TestProxyRequest(t *testing.T) {
 	db.Find(&requests)
 	assert.Len(t, requests, 1)
 	assert.Equal(t, "POST", requests[0].Method)
-	assert.Equal(t, "/proxy/test-server", requests[0].Path)
+	assert.Equal(t, "/api/proxy/test-server", requests[0].Path)
 	assert.Equal(t, testBody, requests[0].Body)
 }
 
@@ -197,7 +197,7 @@ func TestProxyRequest_DefaultServer(t *testing.T) {
 	router := setupTestRouter(db)
 
 	testBody := `{"message": "test default proxy"}`
-	req, _ := http.NewRequest("POST", "/api/v1/proxy", bytes.NewBufferString(testBody))
+	req, _ := http.NewRequest("POST", "/api/proxy", bytes.NewBufferString(testBody))
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
 	router.ServeHTTP(resp, req)
@@ -210,7 +210,7 @@ func TestProxyRequest_DefaultServer(t *testing.T) {
 	db.Find(&requests)
 	assert.Len(t, requests, 1)
 	assert.Equal(t, "POST", requests[0].Method)
-	assert.Equal(t, "/proxy", requests[0].Path)
+	assert.Equal(t, "/api/proxy", requests[0].Path)
 }
 
 func TestProxyRequest_InvalidBody(t *testing.T) {
@@ -219,7 +219,7 @@ func TestProxyRequest_InvalidBody(t *testing.T) {
 
 	// 요청 바디를 읽을 수 없는 경우를 시뮬레이션하기는 어려우므로
 	// 빈 바디로 테스트
-	req, _ := http.NewRequest("POST", "/api/v1/proxy/test-server", nil)
+	req, _ := http.NewRequest("POST", "/api/proxy/test-server", nil)
 	resp := httptest.NewRecorder()
 	router.ServeHTTP(resp, req)
 

@@ -7,7 +7,16 @@ import (
 	"github.com/fake-edge-server/database"
 	"github.com/fake-edge-server/routes"
 	"github.com/gin-gonic/gin"
+
+	_ "github.com/fake-edge-server/docs"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
+
+// @title TCP Tester API
+// @version 1.0
+// @description This is the API documentation for TCP Tester.
+// @BasePath /api
 
 func main() {
 	// 설정 로드
@@ -39,6 +48,9 @@ func main() {
 
 	// 라우트 설정
 	routes.SetupRoutes(r, db)
+
+	// Swagger 설정
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// 서버 시작
 	port := config.GetConfig().ServerPort

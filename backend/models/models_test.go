@@ -72,8 +72,8 @@ func TestTCPConnectionModel(t *testing.T) {
 	// TCPConnection 생성 테스트
 	connection := TCPConnection{
 		ServerName: "test-server",
-		Address:    "localhost:8080",
-		Status:     "connected",
+		ServerAddr: "localhost:8080",
+		Success:    true,
 	}
 
 	result := db.Create(&connection)
@@ -86,8 +86,8 @@ func TestTCPConnectionModel(t *testing.T) {
 	result = db.First(&retrievedConnection, connection.ID)
 	assert.NoError(t, result.Error)
 	assert.Equal(t, connection.ServerName, retrievedConnection.ServerName)
-	assert.Equal(t, connection.Address, retrievedConnection.Address)
-	assert.Equal(t, connection.Status, retrievedConnection.Status)
+	assert.Equal(t, connection.ServerAddr, retrievedConnection.ServerAddr)
+	assert.Equal(t, connection.Success, retrievedConnection.Success)
 }
 
 func TestTCPServerModel(t *testing.T) {
@@ -95,9 +95,9 @@ func TestTCPServerModel(t *testing.T) {
 
 	// TCPServer 생성 테스트
 	server := TCPServer{
-		Name:    "test-server",
-		Address: "localhost:9000",
-		Status:  "active",
+		Name: "test-server",
+		Host: "localhost",
+		Port: 9000,
 	}
 
 	result := db.Create(&server)
@@ -109,100 +109,44 @@ func TestTCPServerModel(t *testing.T) {
 	result = db.First(&retrievedServer, server.ID)
 	assert.NoError(t, result.Error)
 	assert.Equal(t, server.Name, retrievedServer.Name)
-	assert.Equal(t, server.Address, retrievedServer.Address)
-	assert.Equal(t, server.Status, retrievedServer.Status)
+	assert.Equal(t, server.Host, retrievedServer.Host)
+	assert.Equal(t, server.Port, retrievedServer.Port)
 }
 
 func TestTCPPacketModel(t *testing.T) {
 	db := setupTestDB()
 
-	// TCPPacket 생성을 위한 관련 데이터 먼저 생성
-	request := Request{
-		Method: "GET",
-		Path:   "/test",
-		IP:     "127.0.0.1",
+	// TCPServer 생성
+	server := TCPServer{
+		Name: "packet-server",
+		Host: "localhost",
+		Port: 9000,
 	}
-	db.Create(&request)
+	db.Create(&server)
 
-	connection := TCPConnection{
-		ServerName: "test-server",
-		Address:    "localhost:8080",
-		Status:     "connected",
+	// Packet 데이터 생성
+	data := PacketData{
+		{Offset: 0, Value: 1, Type: TypeInt8, Desc: "test"},
 	}
-	db.Create(&connection)
 
 	// TCPPacket 생성 테스트
 	packet := TCPPacket{
-		RequestID:      request.ID,
-		ConnectionID:   connection.ID,
-		Direction:      "outbound",
-		Data:           "test packet data",
-		Size:           len("test packet data"),
-		ProcessingTime: 100,
+		TCPServerID: server.ID,
+		Data:        data,
+		Desc:        "test packet",
 	}
 
 	result := db.Create(&packet)
 	assert.NoError(t, result.Error)
 	assert.NotZero(t, packet.ID)
-	assert.NotZero(t, packet.CreatedAt)
 
-	// TCPPacket 조회 테스트 (관계 포함)
+	// TCPPacket 조회 테스트
 	var retrievedPacket TCPPacket
-	result = db.Preload("Request").Preload("Connection").First(&retrievedPacket, packet.ID)
+	result = db.First(&retrievedPacket, packet.ID)
 	assert.NoError(t, result.Error)
-	assert.Equal(t, packet.Direction, retrievedPacket.Direction)
-	assert.Equal(t, packet.Data, retrievedPacket.Data)
-	assert.Equal(t, packet.Size, retrievedPacket.Size)
-	assert.NotNil(t, retrievedPacket.Request)
-	assert.NotNil(t, retrievedPacket.Connection)
-}
-
-func TestModelRelationships(t *testing.T) {
-	db := setupTestDB()
-
-	// Request와 TCPPacket 관계 테스트
-	request := Request{
-		Method: "POST",
-		Path:   "/api/data",
-		Body:   "test data",
-		IP:     "192.168.1.100",
-	}
-	db.Create(&request)
-
-	connection := TCPConnection{
-		ServerName: "data-server",
-		Address:    "localhost:8081",
-		Status:     "connected",
-	}
-	db.Create(&connection)
-
-	// 여러 패킷 생성
-	packets := []TCPPacket{
-		{
-			RequestID:    request.ID,
-			ConnectionID: connection.ID,
-			Direction:    "outbound",
-			Data:         "packet 1",
-			Size:         8,
-		},
-		{
-			RequestID:    request.ID,
-			ConnectionID: connection.ID,
-			Direction:    "inbound",
-			Data:         "packet 2",
-			Size:         8,
-		},
-	}
-
-	for _, packet := range packets {
-		db.Create(&packet)
-	}
-
-	// Request와 관련된 TCPPacket들 조회
-	var requestWithPackets Request
-	result := db.Preload("TCPRequests").First(&requestWithPackets, request.ID)
-	assert.NoError(t, result.Error)
-	assert.Len(t, requestWithPackets.TCPRequests, 2)
+	assert.Equal(t, packet.TCPServerID, retrievedPacket.TCPServerID)
+	assert.Equal(t, packet.Desc, retrievedPacket.Desc)
+	assert.Len(t, retrievedPacket.Data, 1)
 }
 
 func TestTimestamps(t *testing.T) {

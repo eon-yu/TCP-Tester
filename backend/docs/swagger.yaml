@@ -1,0 +1,22 @@
+basePath: /api
+info:
+  contact: {}
+  description: This is the API documentation for TCP Tester.
+  title: TCP Tester API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 서버 상태 확인
+      tags:
+      - Health
+swagger: "2.0"

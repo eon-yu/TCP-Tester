@@ -30,10 +30,14 @@ func NewAPIHandler(db *gorm.DB, tcpService *services.TCPService) *APIHandler {
 // ProxyRequest는 TCP 서버로 요청을 프록시합니다.
 func (h *APIHandler) ProxyRequest(c *gin.Context) {
 	// 요청 바디 읽기
-	body, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "요청 바디를 읽을 수 없습니다"})
-		return
+	var body []byte
+	var err error
+	if c.Request.Body != nil {
+		body, err = io.ReadAll(c.Request.Body)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "요청 바디를 읽을 수 없습니다"})
+			return
+		}
 	}
 	// 바디 복원 (다시 사용하기 위해)
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
@@ -109,7 +113,12 @@ func (h *APIHandler) GetTCPConnections(c *gin.Context) {
 	c.JSON(http.StatusOK, connections)
 }
 
-// GetHealth는 서버 상태를 반환합니다.
+// GetHealth godoc
+// @Summary 서버 상태 확인
+// @Tags Health
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Router /health [get]
 func (h *APIHandler) GetHealth(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "healthy",
