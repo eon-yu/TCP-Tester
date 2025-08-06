@@ -64,6 +64,21 @@ const TYPE_RANGES = {
   7: { min: BigInt(0), max: BigInt('18446744073709551615') }
 };
 
+const TYPE_COLORS = {
+  0: 'rgba(255, 0, 0, 0.1)',
+  1: 'rgba(0, 255, 0, 0.1)',
+  2: 'rgba(0, 0, 255, 0.1)',
+  3: 'rgba(255, 255, 0, 0.1)',
+  4: 'rgba(255, 0, 255, 0.1)',
+  5: 'rgba(0, 255, 255, 0.1)',
+  6: 'rgba(255, 165, 0, 0.1)',
+  7: 'rgba(128, 0, 128, 0.1)',
+  8: 'rgba(0, 128, 0, 0.1)',
+  9: 'rgba(0, 0, 128, 0.1)',
+  10: 'rgba(128, 128, 0, 0.1)',
+  11: 'rgba(128, 128, 128, 0.1)'
+};
+
 const PacketDataTab = ({ currentTCP }) => {
   const [packets, setPackets] = useState([]);
   const [selectedPacket, setSelectedPacket] = useState(null);
@@ -369,6 +384,7 @@ const PacketDataTab = ({ currentTCP }) => {
 
   // 체인된 값 변경
   const handleDisplayChange = (offset, value) => {
+    if (value === '') value = '0';
     const chain = getChainedItems(offset);
     if (chain.length === 0) return;
     const type = chain[0].type;
@@ -770,6 +786,11 @@ const PacketDataTab = ({ currentTCP }) => {
                 ) : (
                   packetData.sort((a, b) => a.offset - b.offset).map((item) => {
                     const range = TYPE_RANGES[item.type] || {};
+                    const chain = item.is_chained ? getChainedItems(item.offset) : [];
+                    const isChainStart = item.is_chained && chain.length > 0 && chain[0].offset === item.offset;
+                    const typeInfo = DATA_TYPES.find(t => t.value === item.type);
+                    const showTypeLabel = isChainStart || (!item.is_chained && typeInfo?.size === 1);
+                    const typeLabel = typeInfo?.label;
                     return (
                     <TableRow
                       key={item.offset}
@@ -777,7 +798,7 @@ const PacketDataTab = ({ currentTCP }) => {
                       onClick={() => toggleRowSelection(item.offset)}
                       sx={{
                         cursor: 'pointer',
-                        backgroundColor: item.is_chained ? 'rgba(0, 0, 255, 0.05)' : 'inherit'
+                        backgroundColor: item.is_chained ? TYPE_COLORS[item.type] : 'inherit'
                       }}
                     >
                       <TableCell
@@ -787,21 +808,21 @@ const PacketDataTab = ({ currentTCP }) => {
                         {item.offset}
                       </TableCell>
                       <TableCell>
-                        <TextField
+                        <input
                           type="number"
                           value={item.value}
                           onChange={(e) => handleRowChange(item.offset, 'value', parseInt(e.target.value) || 0)}
-                          size="small"
-                          inputProps={{ min: range.min, max: range.max }}
-                          sx={{ width: 80 }}
+                          min={range.min}
+                          max={range.max}
+                          style={{ width: 80 }}
                           onClick={(e) => e.stopPropagation()}
                           disabled={item.is_chained}
                         />
+                        {showTypeLabel && <span style={{ marginLeft: 4 }}>{typeLabel}</span>}
                       </TableCell>
                       <TableCell>
                         {item.is_chained ? (
                           (() => {
-                            const chain = getChainedItems(item.offset);
                             if (chain.length > 0 && chain[0].offset === item.offset) {
                               return (
                                 <TextField
