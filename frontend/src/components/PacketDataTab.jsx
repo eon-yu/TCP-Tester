@@ -305,6 +305,12 @@ const PacketDataTab = ({ currentTCP }) => {
 
     const chain = getChainedItems(item.offset);
     if (chain.length > 0 && chain[0].offset === item.offset) {
+      const typeInfo = DATA_TYPES.find(t => t.value === item.type);
+      const required = typeInfo ? typeInfo.size : 0;
+      if (required > 0 && chain.length < required) {
+        return '';
+      }
+
       const bytes = chain.map(ci => ci.value);
       const buffer = new ArrayBuffer(bytes.length);
       const view = new DataView(buffer);
@@ -336,6 +342,12 @@ const PacketDataTab = ({ currentTCP }) => {
     const chain = getChainedItems(offset);
     if (chain.length === 0) return;
     const type = chain[0].type;
+    const typeInfo = DATA_TYPES.find(t => t.value === type);
+    const required = typeInfo ? typeInfo.size : 0;
+    if (required > 0 && chain.length < required) {
+      showAlert('체인 길이가 타입 크기보다 작습니다', 'error');
+      return;
+    }
     const buffer = new ArrayBuffer(chain.length);
     const view = new DataView(buffer);
 
@@ -372,8 +384,11 @@ const PacketDataTab = ({ currentTCP }) => {
           view.setFloat64(0, parseFloat(value) || 0, true);
           break;
         case 10: {
-          const bytes = Array.from(new TextEncoder().encode(value || ''));
-          bytes.forEach((b, i) => view.setUint8(i, bytes[i] || 0));
+          const bytes = Array.from(new TextEncoder().encode(value || '')).slice(0, chain.length);
+          bytes.forEach((b, i) => view.setUint8(i, b));
+          for (let i = bytes.length; i < chain.length; i++) {
+            view.setUint8(i, 0);
+          }
           break;
         }
         case 11: {
