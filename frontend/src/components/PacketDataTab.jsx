@@ -361,11 +361,10 @@ const PacketDataTab = ({ currentTCP }) => {
     }
   };
 
-  // 체인된 값 표시
-  const getDisplayValue = (item) => {
+  // 입력창에 표시될 값 계산
+  const getInputValue = (item) => {
     const typeInfo = DATA_TYPES.find(t => t.value === item.type);
 
-    // 체인된 그룹의 시작인 경우 전체 값을 계산
     if (item.is_chained) {
       const chain = getChainedItems(item.offset);
       if (chain.length > 0 && chain[0].offset === item.offset) {
@@ -400,7 +399,6 @@ const PacketDataTab = ({ currentTCP }) => {
       return '';
     }
 
-    // 체인이 아닌 경우 단일 값 처리
     switch (item.type) {
       case 10:
         return String.fromCharCode(item.value || 0);
@@ -409,6 +407,11 @@ const PacketDataTab = ({ currentTCP }) => {
       default:
         return (item.value ?? '').toString();
     }
+  };
+
+  // 각 오프셋별 표시 값
+  const getDisplayValue = (item) => {
+    return item.value !== undefined ? item.value.toString() : '';
   };
 
   // 체인된 값 변경 및 단일 값 처리
@@ -827,6 +830,7 @@ const PacketDataTab = ({ currentTCP }) => {
                     const typeInfo = DATA_TYPES.find(t => t.value === item.type);
                     const showTypeLabel = isChainStart || (!item.is_chained && typeInfo?.size === 1);
                     const typeLabel = typeInfo?.label;
+                    const inputType = (item.type === 10 || item.type === 11) ? 'text' : 'number';
                     return (
                     <TableRow
                       key={item.offset}
@@ -845,64 +849,27 @@ const PacketDataTab = ({ currentTCP }) => {
                       </TableCell>
                       <TableCell>
                         {item.is_chained ? (
-                          (() => {
-                            if (isChainStart) {
-                              if (item.type === 10 || item.type === 11) {
-                                return (
-                                  <TextField
-                                    value={getDisplayValue(item)}
-                                    onChange={(e) => handleDisplayChange(item.offset, e.target.value)}
-                                    size="small"
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                );
-                              }
-                              return (
-                                <input
-                                  type="number"
-                                  value={getDisplayValue(item)}
-                                  onChange={(e) => handleDisplayChange(item.offset, e.target.value)}
-                                  min={range.min}
-                                  max={range.max}
-                                  style={{ width: 80 }}
-                                  onClick={(e) => e.stopPropagation()}
-                                />
-                              );
-                            }
-                            return (
-                              <input
-                                type="number"
-                                value={item.value}
-                                disabled
-                                style={{ width: 80 }}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            );
-                          })()
+                          isChainStart ? (
+                            <input
+                              type={inputType}
+                              value={getInputValue(item)}
+                              onChange={(e) => handleDisplayChange(item.offset, e.target.value)}
+                              min={range.min}
+                              max={range.max}
+                              style={{ width: 80 }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : null
                         ) : (
-                          (() => {
-                            if (item.type === 10 || item.type === 11) {
-                              return (
-                                <TextField
-                                  value={getDisplayValue(item)}
-                                  onChange={(e) => handleDisplayChange(item.offset, e.target.value)}
-                                  size="small"
-                                  onClick={(e) => e.stopPropagation()}
-                                />
-                              );
-                            }
-                            return (
-                              <input
-                                type="number"
-                                value={item.value}
-                                onChange={(e) => handleRowChange(item.offset, 'value', parseInt(e.target.value) || 0)}
-                                min={range.min}
-                                max={range.max}
-                                style={{ width: 80 }}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            );
-                          })()
+                          <input
+                            type={inputType}
+                            value={getInputValue(item)}
+                            onChange={(e) => handleDisplayChange(item.offset, e.target.value)}
+                            min={range.min}
+                            max={range.max}
+                            style={{ width: 80 }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
                         )}
                         {showTypeLabel && <span style={{ marginLeft: 4 }}>{typeLabel}</span>}
                       </TableCell>
