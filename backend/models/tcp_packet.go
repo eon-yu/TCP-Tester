@@ -46,11 +46,11 @@ func (dt DataType) Size() int {
 
 // PacketDataItem은 패킷의 개별 데이터 항목을 나타냅니다.
 type PacketDataItem struct {
-	Offset    int      `json:"offset"`
-	Value     int8     `json:"value"`
-	Type      DataType `json:"type"`
-	IsChained bool     `json:"is_chained"`
-	Desc      string   `json:"desc"`
+        Offset    int      `json:"offset"`
+       Value     int      `json:"value"`
+        Type      DataType `json:"type"`
+        IsChained bool     `json:"is_chained"`
+        Desc      string   `json:"desc"`
 }
 
 // PacketData는 패킷 데이터 항목의 배열입니다.

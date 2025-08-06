@@ -53,6 +53,17 @@ const DATA_TYPES = [
   { value: 11, label: 'Hex', size: 0 }
 ];
 
+const TYPE_RANGES = {
+  0: { min: -128, max: 127 },
+  1: { min: -32768, max: 32767 },
+  2: { min: -2147483648, max: 2147483647 },
+  3: { min: BigInt('-9223372036854775808'), max: BigInt('9223372036854775807') },
+  4: { min: 0, max: 255 },
+  5: { min: 0, max: 65535 },
+  6: { min: 0, max: 4294967295 },
+  7: { min: BigInt(0), max: BigInt('18446744073709551615') }
+};
+
 const PacketDataTab = ({ currentTCP }) => {
   const [packets, setPackets] = useState([]);
   const [selectedPacket, setSelectedPacket] = useState(null);
@@ -194,6 +205,25 @@ const PacketDataTab = ({ currentTCP }) => {
   const handleRowChange = (offset, field, value) => {
     const updated = packetData.map(item => {
       if (item.offset === offset) {
+        if (field === 'value') {
+          if (item.is_chained) {
+            return item;
+          }
+          const range = TYPE_RANGES[item.type];
+          let v = value;
+          if (range) {
+            if (typeof range.min === 'bigint') {
+              let bigV = BigInt(value);
+              if (bigV < range.min) bigV = range.min;
+              if (bigV > range.max) bigV = range.max;
+              v = Number(bigV);
+            } else {
+              if (v < range.min) v = range.min;
+              if (v > range.max) v = range.max;
+            }
+          }
+          return { ...item, value: v };
+        }
         return { ...item, [field]: value };
       }
       return item;
@@ -353,30 +383,78 @@ const PacketDataTab = ({ currentTCP }) => {
 
     try {
       switch (type) {
-        case 0:
-          view.setInt8(0, parseInt(value) || 0);
+        case 0: {
+          const v = parseInt(value);
+          if (isNaN(v) || v < TYPE_RANGES[0].min || v > TYPE_RANGES[0].max) {
+            showAlert('Int8 범위를 벗어났습니다', 'error');
+            return;
+          }
+          view.setInt8(0, v);
           break;
-        case 1:
-          view.setInt16(0, parseInt(value) || 0, true);
+        }
+        case 1: {
+          const v = parseInt(value);
+          if (isNaN(v) || v < TYPE_RANGES[1].min || v > TYPE_RANGES[1].max) {
+            showAlert('Int16 범위를 벗어났습니다', 'error');
+            return;
+          }
+          view.setInt16(0, v, true);
           break;
-        case 2:
-          view.setInt32(0, parseInt(value) || 0, true);
+        }
+        case 2: {
+          const v = parseInt(value);
+          if (isNaN(v) || v < TYPE_RANGES[2].min || v > TYPE_RANGES[2].max) {
+            showAlert('Int32 범위를 벗어났습니다', 'error');
+            return;
+          }
+          view.setInt32(0, v, true);
           break;
-        case 3:
-          view.setBigInt64(0, BigInt(value || 0), true);
+        }
+        case 3: {
+          let v = BigInt(value || 0);
+          if (v < TYPE_RANGES[3].min || v > TYPE_RANGES[3].max) {
+            showAlert('Int64 범위를 벗어났습니다', 'error');
+            return;
+          }
+          view.setBigInt64(0, v, true);
           break;
-        case 4:
-          view.setUint8(0, parseInt(value) || 0);
+        }
+        case 4: {
+          const v = parseInt(value);
+          if (isNaN(v) || v < TYPE_RANGES[4].min || v > TYPE_RANGES[4].max) {
+            showAlert('Uint8 범위를 벗어났습니다', 'error');
+            return;
+          }
+          view.setUint8(0, v);
           break;
-        case 5:
-          view.setUint16(0, parseInt(value) || 0, true);
+        }
+        case 5: {
+          const v = parseInt(value);
+          if (isNaN(v) || v < TYPE_RANGES[5].min || v > TYPE_RANGES[5].max) {
+            showAlert('Uint16 범위를 벗어났습니다', 'error');
+            return;
+          }
+          view.setUint16(0, v, true);
           break;
-        case 6:
-          view.setUint32(0, parseInt(value) || 0, true);
+        }
+        case 6: {
+          const v = parseInt(value);
+          if (isNaN(v) || v < TYPE_RANGES[6].min || v > TYPE_RANGES[6].max) {
+            showAlert('Uint32 범위를 벗어났습니다', 'error');
+            return;
+          }
+          view.setUint32(0, v, true);
           break;
-        case 7:
-          view.setBigUint64(0, BigInt(value || 0), true);
+        }
+        case 7: {
+          let v = BigInt(value || 0);
+          if (v < TYPE_RANGES[7].min || v > TYPE_RANGES[7].max) {
+            showAlert('Uint64 범위를 벗어났습니다', 'error');
+            return;
+          }
+          view.setBigUint64(0, v, true);
           break;
+        }
         case 8:
           view.setFloat32(0, parseFloat(value) || 0, true);
           break;
@@ -690,8 +768,10 @@ const PacketDataTab = ({ currentTCP }) => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  packetData.sort((a, b) => a.offset - b.offset).map((item) => (
-                    <TableRow 
+                  packetData.sort((a, b) => a.offset - b.offset).map((item) => {
+                    const range = TYPE_RANGES[item.type] || {};
+                    return (
+                    <TableRow
                       key={item.offset}
                       selected={selectedRows.includes(item.offset)}
                       onClick={() => toggleRowSelection(item.offset)}
@@ -700,7 +780,7 @@ const PacketDataTab = ({ currentTCP }) => {
                         backgroundColor: item.is_chained ? 'rgba(0, 0, 255, 0.05)' : 'inherit'
                       }}
                     >
-                      <TableCell 
+                      <TableCell
                         onContextMenu={(e) => handleContextMenu(e, item.offset)}
                         sx={{ fontWeight: item.is_chained ? 'bold' : 'normal' }}
                       >
@@ -712,7 +792,7 @@ const PacketDataTab = ({ currentTCP }) => {
                           value={item.value}
                           onChange={(e) => handleRowChange(item.offset, 'value', parseInt(e.target.value) || 0)}
                           size="small"
-                          inputProps={{ min: -128, max: 127 }}
+                          inputProps={{ min: range.min, max: range.max }}
                           sx={{ width: 80 }}
                           onClick={(e) => e.stopPropagation()}
                           disabled={item.is_chained}
@@ -754,7 +834,8 @@ const PacketDataTab = ({ currentTCP }) => {
                         </IconButton>
                       </TableCell>
                     </TableRow>
-                  ))
+                  );
+                  })
                 )}
               </TableBody>
             </Table>
