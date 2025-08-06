@@ -336,7 +336,7 @@ const PacketDataTab = ({ currentTCP }) => {
   const handleUnchainRows = () => {
     const offsets = new Set(confirmUnchain.groups.flat());
     const updatedData = packetData.map(item => (
-      offsets.has(item.offset) ? { ...item, is_chained: false } : item
+      offsets.has(item.offset) ? { ...item, is_chained: false, type: 0 } : item
     ));
     setPacketData(updatedData);
     setSelectedRows([]);
@@ -1050,7 +1050,7 @@ const PacketDataTab = ({ currentTCP }) => {
           if (chain.length > 0) {
             const offsets = chain.map(ci => ci.offset);
             const updated = packetData.map(item => (
-              offsets.includes(item.offset) ? { ...item, is_chained: false } : item
+              offsets.includes(item.offset) ? { ...item, is_chained: false, type: 0 } : item
             ));
             setPacketData(updated);
             autoSave(updated);
