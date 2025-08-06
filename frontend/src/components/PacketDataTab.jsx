@@ -241,24 +241,29 @@ const PacketDataTab = ({ currentTCP }) => {
     const typeInfo = DATA_TYPES.find(t => t.value === selectedType);
     const required = typeInfo?.size || 0;
 
-    if (required > 0 && selectedRows.length !== required) {
+    const sortedRows = [...selectedRows].sort((a, b) => a - b);
+
+    // 선택된 행이 연속적인지 확인
+    for (let i = 1; i < sortedRows.length; i++) {
+      if (sortedRows[i] !== sortedRows[i - 1] + 1) {
+        showAlert('선택한 행은 연속된 항목이어야 합니다', 'error');
+        return;
+      }
+    }
+
+    if (required > 0 && sortedRows.length !== required) {
       showAlert(`${typeInfo.label} 타입은 ${required}칸을 선택해야 합니다`, 'error');
       return;
     }
 
-    const sortedRows = [...selectedRows].sort((a, b) => a - b);
-
-    const updatedData = packetData.map(item => {
-      if (selectedRows.includes(item.offset)) {
-        if (item.offset === sortedRows[0]) {
-          return { ...item, type: selectedType, is_chained: true };
-        }
-        return { ...item, is_chained: true };
-      }
-      return item;
-    });
+    const updatedData = packetData.map(item => (
+      selectedRows.includes(item.offset)
+        ? { ...item, type: selectedType, is_chained: true }
+        : item
+    ));
 
     setPacketData(updatedData);
+    autoSave(updatedData);
     setOpenTypeDialog(false);
     setSelectedRows([]);
     showAlert('선택한 행이 성공적으로 묶였습니다', 'success');
@@ -266,15 +271,17 @@ const PacketDataTab = ({ currentTCP }) => {
 
   // 행 체인 해제
   const handleUnchainRows = () => {
-    const updatedData = packetData.map(item => {
-      if (selectedRows.includes(item.offset)) {
-        return { ...item, is_chained: false };
-      }
-      return item;
+    const offsets = new Set();
+    selectedRows.forEach(offset => {
+      getChainedItems(offset).forEach(ci => offsets.add(ci.offset));
     });
+    const updatedData = packetData.map(item => (
+      offsets.has(item.offset) ? { ...item, is_chained: false } : item
+    ));
 
     setPacketData(updatedData);
     setSelectedRows([]);
+    autoSave(updatedData);
     showAlert('선택한 행의 묶음이 해제되었습니다', 'success');
   };
 
@@ -828,9 +835,14 @@ const PacketDataTab = ({ currentTCP }) => {
           <ListItemText>타입 설정</ListItemText>
         </MenuItem>
         <MenuItem onClick={() => {
-          const item = packetData.find(i => i.offset === contextMenu.offset);
-          if (item && item.is_chained) {
-            handleRowChange(contextMenu.offset, 'is_chained', false);
+          const chain = getChainedItems(contextMenu.offset);
+          if (chain.length > 0) {
+            const offsets = chain.map(ci => ci.offset);
+            const updated = packetData.map(item => (
+              offsets.includes(item.offset) ? { ...item, is_chained: false } : item
+            ));
+            setPacketData(updated);
+            autoSave(updated);
             showAlert('체인이 해제되었습니다', 'success');
           }
           handleCloseContextMenu();
