@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   Box,
   Button,
@@ -38,6 +38,43 @@ const PacketDataTable = ({
   handleRowChange,
   handleDeleteRow
 }) => {
+  const inputRefs = useRef({});
+
+  const addRowAndFocus = (field = 'value') => {
+    const newOffset = handleAddRow();
+    setTimeout(() => {
+      inputRefs.current[newOffset]?.[field]?.focus();
+    }, 0);
+  };
+
+  const handleKeyDown = (e, field) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addRowAndFocus(field);
+    }
+  };
+
+  const handlePaste = (e, offset) => {
+    const text = e.clipboardData.getData('text');
+    const lines = text.replace(/\r\n/g, '\n').split('\n').filter(line => line !== '');
+    if (lines.length > 1) e.preventDefault();
+    let currentOffset = offset;
+    let dataCopy = [...packetData];
+    lines.forEach((line, idx) => {
+      if (idx > 0) {
+        currentOffset += 1;
+        if (!dataCopy.some(d => d.offset === currentOffset)) {
+          currentOffset = handleAddRow();
+          dataCopy.push({ offset: currentOffset });
+        }
+      }
+      handleDisplayChange(currentOffset, line);
+    });
+    setTimeout(() => {
+      inputRefs.current[currentOffset]?.value?.focus();
+    }, 0);
+  };
+
   if (!selectedPacket) return null;
 
   return (
@@ -67,9 +104,9 @@ const PacketDataTable = ({
         component={Paper}
         sx={{ maxHeight: 400 }}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+          if (e.key === 'Enter' && e.target === e.currentTarget) {
             e.preventDefault();
-            handleAddRow();
+            addRowAndFocus();
           }
         }}
       >
@@ -127,6 +164,12 @@ const PacketDataTable = ({
                               max={range.max}
                               style={{ width: 80 }}
                               onClick={(e) => e.stopPropagation()}
+                              ref={el => {
+                                if (!inputRefs.current[item.offset]) inputRefs.current[item.offset] = {};
+                                inputRefs.current[item.offset].value = el;
+                              }}
+                              onKeyDown={(e) => handleKeyDown(e, 'value')}
+                              onPaste={(e) => handlePaste(e, item.offset)}
                             />
                           ) : null
                         ) : (
@@ -138,6 +181,12 @@ const PacketDataTable = ({
                             max={range.max}
                             style={{ width: 80 }}
                             onClick={(e) => e.stopPropagation()}
+                            ref={el => {
+                              if (!inputRefs.current[item.offset]) inputRefs.current[item.offset] = {};
+                              inputRefs.current[item.offset].value = el;
+                            }}
+                            onKeyDown={(e) => handleKeyDown(e, 'value')}
+                            onPaste={(e) => handlePaste(e, item.offset)}
                           />
                         )}
                         {showTypeLabel && <span style={{ marginLeft: 4 }}>{typeLabel}</span>}
@@ -150,6 +199,11 @@ const PacketDataTable = ({
                           size="small"
                           fullWidth
                           onClick={(e) => e.stopPropagation()}
+                          inputRef={el => {
+                            if (!inputRefs.current[item.offset]) inputRefs.current[item.offset] = {};
+                            inputRefs.current[item.offset].desc = el;
+                          }}
+                          onKeyDown={(e) => handleKeyDown(e, 'desc')}
                         />
                       </TableCell>
                       <TableCell align="right">
@@ -172,7 +226,7 @@ const PacketDataTable = ({
       </TableContainer>
 
       <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-        <Button startIcon={<AddIcon />} onClick={handleAddRow} variant="outlined" disabled={loading}>
+        <Button startIcon={<AddIcon />} onClick={() => addRowAndFocus()} variant="outlined" disabled={loading}>
           행 추가
         </Button>
       </Box>
