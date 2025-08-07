@@ -818,7 +818,6 @@ const PacketDataTab = ({ currentTCP }) => {
                     const range = TYPE_RANGES[item.type] || {};
                     const chain = item.is_chained ? getChainedItems(item.offset) : [];
                     const isChainStart = item.is_chained && chain.length > 0 && chain[0].offset === item.offset;
-                    console.log(item,isChainStart, chain)
                     const typeInfo = DATA_TYPES.find(t => t.value === item.type);
                     const showTypeLabel = isChainStart || (!item.is_chained && typeInfo?.size === 1);
                     const typeLabel = typeInfo?.label;
@@ -841,6 +840,7 @@ const PacketDataTab = ({ currentTCP }) => {
                       </TableCell>
                       <TableCell>
                         {item.is_chained ? (
+                                isChainStart?(
                             <input
                               type={inputType}
                               value={getInputValue(item)}
@@ -849,9 +849,7 @@ const PacketDataTab = ({ currentTCP }) => {
                               max={range.max}
                               style={{ width: 80 }}
                               onClick={(e) => e.stopPropagation()}
-                              disabled={!isChainStart}
-                            />
-
+                            />):null
                         ) : (
                           <input
                             type={inputType}
