@@ -1,23 +1,14 @@
 import React, { useState } from 'react';
-import { 
-  Box, 
-  Paper, 
-  Typography, 
-  Chip, 
-  Button, 
-  IconButton, 
-  Tooltip,
+import {
+  Box,
+  Paper,
+  Typography,
+  Chip,
   CircularProgress
 } from '@mui/material';
-import {
-  Add as AddIcon,
-  Settings as SettingsIcon,
-  Delete as DeleteIcon,
-  StopCircle as StopCircleIcon,
-  PlayCircle as PlayCircleIcon
-} from '@mui/icons-material';
 import TCPServerDialog from './TCPServerDialog';
 import TCPList from './TCPList';
+import TCPActionButtons from './TCPActionButtons';
 import { startTCPServer, stopTCPServer, deleteTCPServer } from '../api/tcpApi';
 
 const TopPanel = ({ tcpServers, currentTCP, onSelectTCP, onTCPChange, loading }) => {
@@ -137,71 +128,14 @@ const TopPanel = ({ tcpServers, currentTCP, onSelectTCP, onTCPChange, loading })
           )}
         </Box>
 
-        {/* 액션 버튼들 */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-          <Box>
-            <Tooltip title="TCP 서버 추가">
-              <IconButton onClick={handleOpenAddDialog} color="primary">
-                <AddIcon />
-              </IconButton>
-            </Tooltip>
-
-            <Tooltip title="TCP 서버 설정 수정">
-              <span>
-                <IconButton 
-                  onClick={handleOpenEditDialog} 
-                  color="primary" 
-                  disabled={!currentTCP}
-                >
-                  <SettingsIcon />
-                </IconButton>
-              </span>
-            </Tooltip>
-
-            <Tooltip title="TCP 서버 삭제 (오직 Dead 상태일 때만)">
-              <span>
-                <IconButton 
-                  onClick={handleDeleteTCP} 
-                  color="error" 
-                  disabled={!currentTCP || currentTCP.status !== 'Dead'}
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </Box>
-
-          <Box>
-            <Tooltip title="TCP 서버 시작">
-              <span>
-                <Button 
-                  startIcon={<PlayCircleIcon />} 
-                  variant="contained" 
-                  color="success" 
-                  disabled={!currentTCP || currentTCP.status === 'Alive'}
-                  onClick={handleStartTCP}
-                  sx={{ mr: 1 }}
-                >
-                  시작
-                </Button>
-              </span>
-            </Tooltip>
-
-            <Tooltip title="TCP 서버 중지 (오직 Alive 상태일 때만)">
-              <span>
-                <Button 
-                  startIcon={<StopCircleIcon />} 
-                  variant="contained" 
-                  color="error" 
-                  disabled={!currentTCP || currentTCP.status !== 'Alive'}
-                  onClick={handleStopTCP}
-                >
-                  중지
-                </Button>
-              </span>
-            </Tooltip>
-          </Box>
-        </Box>
+        <TCPActionButtons
+          currentTCP={currentTCP}
+          onAdd={handleOpenAddDialog}
+          onEdit={handleOpenEditDialog}
+          onDelete={handleDeleteTCP}
+          onStart={handleStartTCP}
+          onStop={handleStopTCP}
+        />
       </Box>
 
       {/* TCP 서버 추가/수정 대화상자 */}
