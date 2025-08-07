@@ -3,27 +3,11 @@ import {
     Alert,
     Box,
     Button,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    FormControl,
-    IconButton,
-    InputLabel,
     ListItemIcon,
     ListItemText,
     Menu,
     MenuItem,
-    Paper,
-    Select,
     Snackbar,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    TextField,
     Typography
 } from '@mui/material';
 import {
@@ -43,48 +27,12 @@ import {
     updateTCPPacketData,
     updateTCPPacketInfo
 } from '../api/packetApi';
-
-// 데이터 타입 정의
-const DATA_TYPES = [
-  { value: 0, label: 'Int8', size: 1 },
-  { value: 1, label: 'Int16', size: 2 },
-  { value: 2, label: 'Int32', size: 4 },
-  { value: 3, label: 'Int64', size: 8 },
-  { value: 4, label: 'Uint8', size: 1 },
-  { value: 5, label: 'Uint16', size: 2 },
-  { value: 6, label: 'Uint32', size: 4 },
-  { value: 7, label: 'Uint64', size: 8 },
-  { value: 8, label: 'Float32', size: 4 },
-  { value: 9, label: 'Float64', size: 8 },
-  { value: 10, label: 'String', size: 0 },
-  { value: 11, label: 'Hex', size: 0 }
-];
-
-const TYPE_RANGES = {
-  0: { min: -128, max: 127 },
-  1: { min: -32768, max: 32767 },
-  2: { min: -2147483648, max: 2147483647 },
-  3: { min: BigInt('-9223372036854775808'), max: BigInt('9223372036854775807') },
-  4: { min: 0, max: 255 },
-  5: { min: 0, max: 65535 },
-  6: { min: 0, max: 4294967295 },
-  7: { min: BigInt(0), max: BigInt('18446744073709551615') }
-};
-
-const TYPE_COLORS = {
-  0: 'rgba(255, 0, 0, 0.1)',
-  1: 'rgba(0, 255, 0, 0.1)',
-  2: 'rgba(0, 0, 255, 0.1)',
-  3: 'rgba(255, 255, 0, 0.1)',
-  4: 'rgba(255, 0, 255, 0.1)',
-  5: 'rgba(0, 255, 255, 0.1)',
-  6: 'rgba(255, 165, 0, 0.1)',
-  7: 'rgba(128, 0, 128, 0.1)',
-  8: 'rgba(0, 128, 0, 0.1)',
-  9: 'rgba(0, 0, 128, 0.1)',
-  10: 'rgba(128, 128, 0, 0.1)',
-  11: 'rgba(128, 128, 128, 0.1)'
-};
+import PacketDataTable from './packet/PacketDataTable';
+import PacketFormDialog from './packet/PacketFormDialog';
+import TypeSelectDialog from './packet/TypeSelectDialog';
+import ConfirmUnchainDialog from './packet/ConfirmUnchainDialog';
+import ResponseDialog from './packet/ResponseDialog';
+import { DATA_TYPES, TYPE_RANGES, TYPE_COLORS } from './packet/constants';
 
 const PacketDataTab = ({ currentTCP }) => {
   const [packets, setPackets] = useState([]);
@@ -760,235 +708,51 @@ const PacketDataTab = ({ currentTCP }) => {
         </Box>
       )}
 
-      {/* 패킷 데이터 테이블 */}
-      {selectedPacket && (
-        <Box>
-          {selectedRows.length > 0 && (
-            <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
-              <Button
-                variant="outlined"
-                startIcon={<LinkIcon />}
-                onClick={handleChainRows}
-                disabled={selectedRows.length < 2}
-              >
-                선택 항목 묶기
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<LinkOffIcon />}
-                onClick={initiateUnchainRows}
-                disabled={selectedRows.length === 0}
-              >
-                묶음 해제
-              </Button>
-            </Box>
-          )}
+      <PacketDataTable
+        selectedPacket={selectedPacket}
+        packetData={packetData}
+        selectedRows={selectedRows}
+        toggleRowSelection={toggleRowSelection}
+        handleContextMenu={handleContextMenu}
+        handleAddRow={handleAddRow}
+        handleChainRows={handleChainRows}
+        initiateUnchainRows={initiateUnchainRows}
+        loading={loading}
+        getChainedItems={getChainedItems}
+        getInputValue={getInputValue}
+        handleDisplayChange={handleDisplayChange}
+        getDisplayValue={getDisplayValue}
+        handleRowChange={handleRowChange}
+        handleDeleteRow={handleDeleteRow}
+      />
 
-          <TableContainer
-            component={Paper}
-            sx={{ maxHeight: 400 }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleAddRow();
-              }
-            }}
-          >
-            <Table stickyHeader size="small" sx={{ '& th, & td': { border: '1px solid rgba(224,224,224,1)' } }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Offset</TableCell>
-                  <TableCell>Value</TableCell>
-                  <TableCell>Display</TableCell>
-                  <TableCell>설명</TableCell>
-                  <TableCell align="right">작업</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {packetData.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} align="center">
-                      <Typography variant="body2" color="text.secondary">
-                        데이터가 없습니다. '행 추가' 버튼을 클릭하여 데이터를 추가하세요.
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  packetData.sort((a, b) => a.offset - b.offset).map((item) => {
-                    const range = TYPE_RANGES[item.type] || {};
-                    const chain = item.is_chained ? getChainedItems(item.offset) : [];
-                    const isChainStart = item.is_chained && chain.length > 0 && chain[0].offset === item.offset;
-                    const typeInfo = DATA_TYPES.find(t => t.value === item.type);
-                    const showTypeLabel = isChainStart || (!item.is_chained && typeInfo?.size === 1);
-                    const typeLabel = typeInfo?.label;
-                    const inputType = 'text'//(item.type === 10 || item.type === 11) ? 'text' : 'number';
-                    return (
-                    <TableRow
-                      key={item.offset}
-                      selected={selectedRows.includes(item.offset)}
-                      onClick={() => toggleRowSelection(item.offset)}
-                      sx={{
-                        cursor: 'pointer',
-                        backgroundColor: item.is_chained ? TYPE_COLORS[item.type] : 'inherit'
-                      }}
-                    >
-                      <TableCell
-                        onContextMenu={(e) => handleContextMenu(e, item.offset)}
-                        sx={{ fontWeight: item.is_chained ? 'bold' : 'normal' }}
-                      >
-                        {item.offset}
-                      </TableCell>
-                      <TableCell>
-                        {item.is_chained ? (
-                                isChainStart?(
-                            <input
-                              type={inputType}
-                              value={getInputValue(item)}
-                              onChange={(e) => handleDisplayChange(item.offset, e.target.value)}
-                              min={range.min}
-                              max={range.max}
-                              style={{ width: 80 }}
-                              onClick={(e) => e.stopPropagation()}
-                            />):null
-                        ) : (
-                          <input
-                            type={inputType}
-                            value={getInputValue(item)}
-                            onChange={(e) => handleDisplayChange(item.offset, e.target.value)}
-                            min={range.min}
-                            max={range.max}
-                            style={{ width: 80 }}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        )}
-                        {showTypeLabel && <span style={{ marginLeft: 4 }}>{typeLabel}</span>}
-                      </TableCell>
-                      <TableCell>
-                        {getDisplayValue(item)}
-                      </TableCell>
-                      <TableCell>
-                        <TextField
-                          value={item.desc || ''}
-                          onChange={(e) => handleRowChange(item.offset, 'desc', e.target.value)}
-                          size="small"
-                          fullWidth
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <IconButton size="small" onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteRow(item.offset);
-                        }}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+      <PacketFormDialog
+        open={openDialog}
+        loading={loading}
+        packetName={packetName}
+        packetDesc={packetDesc}
+        setPacketName={setPacketName}
+        setPacketDesc={setPacketDesc}
+        selectedPacket={selectedPacket}
+        onSave={selectedPacket ? handleUpdatePacketInfo : handleCreatePacket}
+        onClose={() => setOpenDialog(false)}
+      />
 
-          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-            <Button
-              startIcon={<AddIcon />}
-              onClick={handleAddRow}
-              variant="outlined"
-              disabled={loading}
-            >
-              행 추가
-            </Button>
-          </Box>
-        </Box>
-      )}
+      <TypeSelectDialog
+        open={openTypeDialog}
+        selectedType={selectedType}
+        setSelectedType={setSelectedType}
+        selectedRows={selectedRows}
+        onApply={applyChainType}
+        onClose={() => setOpenTypeDialog(false)}
+      />
 
-      {/* 패킷 저장 대화상자 */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} fullWidth maxWidth="sm">
-        <DialogTitle>{selectedPacket ? '패킷 수정' : '새 패킷 생성'}</DialogTitle>
-        <DialogContent>
-            <TextField
-                label="패킷 이름"
-                value={packetName}
-                onChange={(e) => setPacketName(e.target.value)}
-                fullWidth
-                margin="normal"
-                placeholder="패킷의 이름을 설정해주세요"
-            />
-          <TextField
-            label="패킷 설명"
-            value={packetDesc}
-            onChange={(e) => setPacketDesc(e.target.value)}
-            fullWidth
-            margin="normal"
-            placeholder="패킷의 용도나 특징을 간단히 설명해주세요"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)} disabled={loading}>
-            취소
-          </Button>
-          <Button onClick={selectedPacket ? handleUpdatePacketInfo: handleCreatePacket} variant="contained" color="primary" disabled={loading}>
-            저장
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* 타입 선택 대화상자 */}
-      <Dialog open={openTypeDialog} onClose={() => setOpenTypeDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>데이터 타입 선택</DialogTitle>
-        <DialogContent>
-          <FormControl fullWidth margin="normal">
-            <InputLabel id="data-type-select-label">데이터 타입</InputLabel>
-            <Select
-              labelId="data-type-select-label"
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              label="데이터 타입"
-            >
-              {DATA_TYPES.map((type) => (
-                <MenuItem key={type.value} value={type.value}>
-                  {type.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            선택한 {selectedRows.length}개의 바이트를 {DATA_TYPES.find(t => t.value === selectedType)?.label} 타입으로 묶습니다.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenTypeDialog(false)}>
-            취소
-          </Button>
-          <Button onClick={applyChainType} variant="contained" color="primary">
-            적용
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* 묶음 해제 확인 대화상자 */}
-      <Dialog open={confirmUnchain.open} onClose={cancelUnchain}>
-        <DialogTitle>묶음 해제</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" sx={{ mb: 2 }}>
-            선택한 항목은 다음 묶음에 포함되어 있습니다:
-          </Typography>
-          <Box component="ul" sx={{ pl: 2, mb: 0 }}>
-            {confirmUnchain.groups.map((g, idx) => (
-              <li key={idx}>오프셋 {g[0]} - {g[g.length - 1]}</li>
-            ))}
-          </Box>
-          <Typography variant="body2" sx={{ mt: 2 }}>
-            이 묶음들을 모두 해제하시겠습니까?
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={cancelUnchain}>취소</Button>
-          <Button onClick={handleUnchainRows} color="primary" variant="contained">해제</Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmUnchainDialog
+        open={confirmUnchain.open}
+        groups={confirmUnchain.groups}
+        onConfirm={handleUnchainRows}
+        onCancel={cancelUnchain}
+      />
 
       {/* 오프셋 컨텍스트 메뉴 */}
       <Menu
@@ -1042,48 +806,11 @@ const PacketDataTab = ({ currentTCP }) => {
         </Alert>
       </Snackbar>
 
-      {/* 응답 대화상자 */}
-      <Dialog
+      <ResponseDialog
         open={responseDialog.open}
+        response={responseDialog.response}
         onClose={() => setResponseDialog({ open: false, response: null })}
-        fullWidth
-        maxWidth="md"
-      >
-        <DialogTitle>TCP 패킷 응답</DialogTitle>
-        <DialogContent>
-          {responseDialog.response && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle1" gutterBottom>응답 메시지</Typography>
-              <Typography variant="body2" color="success.main" gutterBottom>
-                {responseDialog.response.message}
-              </Typography>
-
-              <Typography variant="subtitle1" sx={{ mt: 2 }} gutterBottom>텍스트 응답</Typography>
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                value={responseDialog.response.response_text || ''}
-                InputProps={{ readOnly: true }}
-              />
-
-              <Typography variant="subtitle1" sx={{ mt: 2 }} gutterBottom>16진수 응답</Typography>
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                value={responseDialog.response.response || ''}
-                InputProps={{ readOnly: true }}
-              />
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setResponseDialog({ open: false, response: null })}>
-            닫기
-          </Button>
-        </DialogActions>
-      </Dialog>
+      />
     </Box>
   );
 };
