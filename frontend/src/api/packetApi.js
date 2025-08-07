@@ -1,5 +1,5 @@
-import { fetchWithErrorHandling } from './common';
-import { API_BASE_URL } from './config';
+import {fetchWithErrorHandling} from './common';
+import {API_BASE_URL} from './config';
 
 // TCP 패킷 목록 조회
 export async function fetchTCPPackets(tcpId) {
@@ -26,14 +26,25 @@ export async function createTCPPacket(tcpId, packetData) {
 }
 
 // TCP 패킷 수정
-export async function updateTCPPacket(tcpId, packetId, packetData) {
-  return await fetchWithErrorHandling(`${API_BASE_URL}/tcp/${tcpId}/packets/${packetId}`, {
+export async function updateTCPPacketData(tcpId, packetId, packetData) {
+  return await fetchWithErrorHandling(`${API_BASE_URL}/tcp/${tcpId}/packets/${packetId}/data`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(packetData),
   });
+}
+
+// TCP 패킷 수정
+export async function updateTCPPacketInfo(tcpId, packetId, packetData) {
+    return await fetchWithErrorHandling(`${API_BASE_URL}/tcp/${tcpId}/packets/${packetId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(packetData),
+    });
 }
 
 // TCP 패킷 삭제

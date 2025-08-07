@@ -1,41 +1,48 @@
 import React, {useEffect, useState} from 'react';
 import {
-  Alert,
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControl,
-  IconButton,
-  InputLabel,
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem,
-  Paper,
-  Select,
-  Snackbar,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography
+    Alert,
+    Box,
+    Button,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    FormControl,
+    IconButton,
+    InputLabel,
+    ListItemIcon,
+    ListItemText,
+    Menu,
+    MenuItem,
+    Paper,
+    Select,
+    Snackbar,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    TextField,
+    Typography
 } from '@mui/material';
 import {
-  Add as AddIcon,
-  Delete as DeleteIcon,
-  Link as LinkIcon,
-  LinkOff as LinkOffIcon,
-  Refresh as RefreshIcon,
-  Save as SaveIcon,
-  Send as SendIcon
+    Add as AddIcon,
+    Delete as DeleteIcon,
+    Link as LinkIcon,
+    LinkOff as LinkOffIcon,
+    Refresh as RefreshIcon,
+    Save as SaveIcon,
+    Send as SendIcon
 } from '@mui/icons-material';
-import {createTCPPacket, deleteTCPPacket, fetchTCPPackets, sendTCPPacket, updateTCPPacket} from '../api/packetApi';
+import {
+    createTCPPacket,
+    deleteTCPPacket,
+    fetchTCPPackets,
+    sendTCPPacket,
+    updateTCPPacketData,
+    updateTCPPacketInfo
+} from '../api/packetApi';
 
 // 데이터 타입 정의
 const DATA_TYPES = [
@@ -85,6 +92,7 @@ const PacketDataTab = ({ currentTCP }) => {
   const [packetData, setPacketData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
+  const [packetName, setPacketName] = useState('');
   const [packetDesc, setPacketDesc] = useState('');
   const [contextMenu, setContextMenu] = useState(null);
   const [selectedRows, setSelectedRows] = useState([]);
@@ -139,28 +147,48 @@ const PacketDataTab = ({ currentTCP }) => {
     setOpenDialog(true);
   };
 
+    // 패킷 저장
+    const handleCreatePacket = async () => {
+        if (!validateChainLengths()) return;
+        try {
+            setLoading(true);
+
+            const packetToSave = {
+                tcp_server_id: currentTCP.id,
+                name: packetName,
+                desc: packetDesc
+            };
+
+            await createTCPPacket(currentTCP.id, packetToSave);
+            showAlert(`'${packetName}' 패킷이 성공적으로 생성되었습니다`, 'success');
+            setOpenDialog(false);
+            loadPackets();
+        } catch (error) {
+            console.error('패킷 저장 실패:', error);
+            showAlert('패킷 저장 실패: ' + (error.message || '알 수 없는 오류'), 'error');
+            // 자세한 오류 내용 로깅
+            if (error.response) {
+                console.error('응답 데이터:', error.response);
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
   // 패킷 저장
-  const handleSavePacket = async () => {
+  const handleUpdatePacketInfo = async () => {
     if (!validateChainLengths()) return;
     try {
       setLoading(true);
 
       const packetToSave = {
         tcp_server_id: currentTCP.id,
-        data: packetData,
-        desc: packetDesc
+          name: packetName,
+          desc: packetDesc
       };
 
-      if (selectedPacket) {
-        // 기존 패킷 업데이트
-        await updateTCPPacket(currentTCP.id, selectedPacket.id, packetToSave);
+        await updateTCPPacketInfo(currentTCP.id, selectedPacket.id, packetToSave);
         showAlert('패킷이 성공적으로 업데이트되었습니다', 'success');
-      } else {
-        // 새 패킷 생성
-        const newPacket = await createTCPPacket(currentTCP.id, packetToSave);
-        setSelectedPacket(newPacket);
-        showAlert('새 패킷이 성공적으로 생성되었습니다', 'success');
-      }
+
 
       setOpenDialog(false);
       loadPackets();
@@ -351,10 +379,9 @@ const PacketDataTab = ({ currentTCP }) => {
     if (!selectedPacket) return;
     if (!validateChainLengths(dataToSave)) return;
     try {
-      await updateTCPPacket(currentTCP.id, selectedPacket.id, {
+      await updateTCPPacketData(currentTCP.id, selectedPacket.id, {
         tcp_server_id: currentTCP.id,
-        data: dataToSave,
-        desc: packetDesc
+        data: dataToSave
       });
     } catch (error) {
       console.error('자동 저장 실패:', error);
@@ -745,7 +772,7 @@ const PacketDataTab = ({ currentTCP }) => {
               sx={{ mr: 1 }}
               disabled={loading}
             >
-              저장
+              수정
             </Button>
             <Button
               color="error"
@@ -827,10 +854,11 @@ const PacketDataTab = ({ currentTCP }) => {
                     const range = TYPE_RANGES[item.type] || {};
                     const chain = item.is_chained ? getChainedItems(item.offset) : [];
                     const isChainStart = item.is_chained && chain.length > 0 && chain[0].offset === item.offset;
+                    console.log(item,isChainStart, chain)
                     const typeInfo = DATA_TYPES.find(t => t.value === item.type);
                     const showTypeLabel = isChainStart || (!item.is_chained && typeInfo?.size === 1);
                     const typeLabel = typeInfo?.label;
-                    const inputType = (item.type === 10 || item.type === 11) ? 'text' : 'number';
+                    const inputType = 'text'//(item.type === 10 || item.type === 11) ? 'text' : 'number';
                     return (
                     <TableRow
                       key={item.offset}
@@ -849,7 +877,6 @@ const PacketDataTab = ({ currentTCP }) => {
                       </TableCell>
                       <TableCell>
                         {item.is_chained ? (
-                          isChainStart ? (
                             <input
                               type={inputType}
                               value={getInputValue(item)}
@@ -858,8 +885,9 @@ const PacketDataTab = ({ currentTCP }) => {
                               max={range.max}
                               style={{ width: 80 }}
                               onClick={(e) => e.stopPropagation()}
+                              disabled={!isChainStart}
                             />
-                          ) : null
+
                         ) : (
                           <input
                             type={inputType}
@@ -918,6 +946,14 @@ const PacketDataTab = ({ currentTCP }) => {
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)} fullWidth maxWidth="sm">
         <DialogTitle>{selectedPacket ? '패킷 수정' : '새 패킷 생성'}</DialogTitle>
         <DialogContent>
+            <TextField
+                label="패킷 이름"
+                value={packetName}
+                onChange={(e) => setPacketName(e.target.value)}
+                fullWidth
+                margin="normal"
+                placeholder="패킷의 이름을 설정해주세요"
+            />
           <TextField
             label="패킷 설명"
             value={packetDesc}
@@ -931,7 +967,7 @@ const PacketDataTab = ({ currentTCP }) => {
           <Button onClick={() => setOpenDialog(false)} disabled={loading}>
             취소
           </Button>
-          <Button onClick={handleSavePacket} variant="contained" color="primary" disabled={loading}>
+          <Button onClick={selectedPacket ? handleUpdatePacketInfo: handleCreatePacket} variant="contained" color="primary" disabled={loading}>
             저장
           </Button>
         </DialogActions>

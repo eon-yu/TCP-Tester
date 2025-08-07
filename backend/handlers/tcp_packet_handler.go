@@ -5,13 +5,14 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/fake-edge-server/models"
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"net"
 	"net/http"
 	"sort"
 	"strconv"
+
+	"github.com/fake-edge-server/models"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // TCPPacketHandler는 TCP 패킷 관리를 위한 핸들러 구조체입니다.
@@ -88,9 +89,33 @@ func (h *TCPPacketHandler) GetTCPPacketByID(c *gin.Context) {
 
 	c.JSON(http.StatusOK, packet)
 }
+func (h *TCPPacketHandler) UpdateTCPPacketInfo(c *gin.Context) {
+	packetID := c.Param("packet_id")
 
-// UpdateTCPPacket는 기존 TCP 패킷을 업데이트합니다.
-func (h *TCPPacketHandler) UpdateTCPPacket(c *gin.Context) {
+	var updatedPacket models.TCPPacket
+	if err := c.ShouldBindJSON(&updatedPacket); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "잘못된 요청 형식: " + err.Error()})
+		return
+	}
+
+	var packet = &models.TCPPacket{}
+
+	result := h.DB.Find(packet).Where("id != ? and name = ?", packetID, updatedPacket.Name)
+	if packet != nil || result.Error == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "패킷 이름을 변경할 수 없습니다."})
+		return
+	}
+	h.DB.Find(packet, packet.ID).Updates(updatedPacket)
+	result = h.DB.Save(packet)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "패킷 업데이트 실패: " + result.Error.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, packet)
+}
+
+func (h *TCPPacketHandler) UpdateTCPPacketData(c *gin.Context) {
 	packetID := c.Param("packet_id")
 
 	var packet models.TCPPacket
@@ -108,7 +133,6 @@ func (h *TCPPacketHandler) UpdateTCPPacket(c *gin.Context) {
 
 	// 업데이트할 필드 설정
 	packet.Data = updatedPacket.Data
-	packet.Desc = updatedPacket.Desc
 
 	if err := validatePacketData(packet.Data); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

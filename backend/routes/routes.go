@@ -52,7 +52,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 			tc.GET("/:id/packets", tcpPacketHandler.GetTCPPackets) // 특정 TCP 서버 조회
 			tc.POST("/:id/packets", tcpPacketHandler.CreateTCPPacket)
 			tc.DELETE("/:id/packets/:id", tcpPacketHandler.DeleteTCPPacket)
-			tc.PUT("/:id/packets/:id", tcpPacketHandler.UpdateTCPPacket)
+			tc.PUT("/:id/packets/:id", tcpPacketHandler.UpdateTCPPacketInfo)
+			tc.PUT("/:id/packets/:id/data", tcpPacketHandler.UpdateTCPPacketData)
 
 		}
 	}
