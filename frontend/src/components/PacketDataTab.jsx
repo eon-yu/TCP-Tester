@@ -192,7 +192,18 @@ const PacketDataTab = ({ currentTCP }) => {
 
   // 행 삭제
   const handleDeleteRow = (offsetToDelete) => {
-    setPacketData(packetData.filter(item => item.offset !== offsetToDelete));
+    const updated = packetData
+      .filter(item => item.offset !== offsetToDelete)
+      .map(item =>
+        item.offset > offsetToDelete ? { ...item, offset: item.offset - 1 } : item
+      );
+    setPacketData(updated);
+    setSelectedRows(prev =>
+      prev
+        .filter(row => row !== offsetToDelete)
+        .map(row => (row > offsetToDelete ? row - 1 : row))
+    );
+    autoSave(updated);
   };
 
   // 행 값 변경
@@ -365,8 +376,14 @@ const PacketDataTab = ({ currentTCP }) => {
           case 7: return view.getBigUint64(0, true).toString();
           case 8: return view.getFloat32(0, true).toString();
           case 9: return view.getFloat64(0, true).toString();
-          case 10:
-            return bytes.map(b => String.fromCharCode(b)).join('');
+          case 10: {
+            let str = '';
+            for (const b of bytes) {
+              if (b === 0) break;
+              str += String.fromCharCode(b);
+            }
+            return str;
+          }
           case 11:
             return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
           default:
@@ -378,7 +395,7 @@ const PacketDataTab = ({ currentTCP }) => {
 
     switch (item.type) {
       case 10:
-        return String.fromCharCode(item.value || 0);
+        return item.value ? String.fromCharCode(item.value) : '';
       case 11:
         return (item.value || 0).toString(16).padStart(2, '0');
       default:
