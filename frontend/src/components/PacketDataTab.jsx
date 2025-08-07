@@ -581,71 +581,35 @@ const PacketDataTab = ({ currentTCP }) => {
 
   // 특정 오프셋을 포함하는 체인된 항목들 가져오기
   const getChainedItems = (offset) => {
-    // 현재 항목이 체인되어 있는지 확인
-    const currentItem = packetData.find(item => item.offset === offset);
-    if (!currentItem || !currentItem.is_chained) {
+    // 정렬된 데이터 복사본 생성
+    const sorted = [...packetData].sort((a, b) => a.offset - b.offset);
+
+    // 현재 오프셋의 위치 찾기
+    const index = sorted.findIndex(item => item.offset === offset);
+
+    // 체인되지 않은 항목이거나 존재하지 않으면 빈 배열 반환
+    if (index === -1 || !sorted[index].is_chained) {
       return [];
     }
 
-    // 연속된 체인 항목 찾기
-    let chainedGroup = [];
-    let foundStart = false;
-
-    // 정렬된 데이터에서 연속된 체인 항목 찾기
-    const sortedData = [...packetData].sort((a, b) => a.offset - b.offset);
-
-    for (let i = 0; i < sortedData.length; i++) {
-      const item = sortedData[i];
-
-      if (item.is_chained) {
-        if (!foundStart) {
-          // 체인의 시작점 찾기
-          if (item.offset === offset || chainedGroup.some(ci => ci.offset === offset)) {
-            foundStart = true;
-            chainedGroup.push(item);
-          } else if (chainedGroup.length > 0) {
-            chainedGroup.push(item);
-          }
-        } else {
-          // 연속된 체인 항목 추가
-          if (chainedGroup.length > 0 && 
-              item.offset === chainedGroup[chainedGroup.length - 1].offset + 1) {
-            chainedGroup.push(item);
-          } else {
-            // 연속성이 끊기면 중단
-            break;
-          }
-        }
-      } else if (foundStart) {
-        // 체인이 끊기면 중단
-        break;
-      }
+    // 체인의 시작점까지 역방향 탐색
+    let start = index;
+    while (start > 0 &&
+           sorted[start - 1].is_chained &&
+           sorted[start - 1].offset === sorted[start].offset - 1) {
+      start--;
     }
 
-    // 현재 오프셋이 포함된 체인 그룹을 찾지 못했으면 다시 검색
-    if (!chainedGroup.some(item => item.offset === offset)) {
-      chainedGroup = [];
-
-      // 정방향으로 검색
-      for (let i = 0; i < sortedData.length; i++) {
-        if (sortedData[i].offset === offset) {
-          // 현재 항목부터 시작해서 체인 그룹 찾기
-          let j = i;
-          while (j >= 0 && sortedData[j].is_chained) {
-            j--;
-          }
-          j++; // 첫 번째 체인 항목으로 돌아가기
-
-          while (j < sortedData.length && sortedData[j].is_chained) {
-            chainedGroup.push(sortedData[j]);
-            j++;
-          }
-          break;
-        }
-      }
+    // 체인의 끝까지 정방향 탐색
+    let end = index;
+    while (end + 1 < sorted.length &&
+           sorted[end + 1].is_chained &&
+           sorted[end + 1].offset === sorted[end].offset + 1) {
+      end++;
     }
 
-    return chainedGroup;
+    // 시작부터 끝까지 잘라서 반환
+    return sorted.slice(start, end + 1);
   };
 
   // 전체 체인 길이 검증
