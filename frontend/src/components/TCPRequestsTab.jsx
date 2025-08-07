@@ -19,6 +19,7 @@ import {
   TextField
 } from '@mui/material';
 import { Refresh as RefreshIcon, Visibility as VisibilityIcon } from '@mui/icons-material';
+import { formatDate } from '../utils/format';
 
 const TCPRequestsTab = ({ requests, onRefresh }) => {
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -33,11 +34,6 @@ const TCPRequestsTab = ({ requests, onRefresh }) => {
   // 요청 상세 정보 대화상자 닫기
   const handleCloseDetails = () => {
     setDetailsOpen(false);
-  };
-
-  // 날짜 포맷 함수
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString();
   };
 
   return (

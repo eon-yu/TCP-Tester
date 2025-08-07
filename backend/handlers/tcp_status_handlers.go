@@ -6,19 +6,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/fake-edge-server/models"
 	"github.com/gin-gonic/gin"
 )
 
 // CheckTCPStatus는 TCP 서버의 연결 상태를 확인합니다.
 func (h *TCPServerHandler) CheckTCPStatus(c *gin.Context) {
-	id := c.Param("id")
-
-	// 서버 정보 조회
-	var server models.TCPServer
-	result := h.DB.First(&server, id)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "TCP 서버를 찾을 수 없습니다"})
+	server, ok := h.getServerByID(c)
+	if !ok {
 		return
 	}
 
@@ -41,13 +35,8 @@ func (h *TCPServerHandler) CheckTCPStatus(c *gin.Context) {
 
 // StartTCPServer는 TCP 서버를 시작합니다. (실제로는 상태 변경만 수행)
 func (h *TCPServerHandler) StartTCPServer(c *gin.Context) {
-	id := c.Param("id")
-
-	// 서버 정보 조회
-	var server models.TCPServer
-	result := h.DB.First(&server, id)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "TCP 서버를 찾을 수 없습니다"})
+	server, ok := h.getServerByID(c)
+	if !ok {
 		return
 	}
 
@@ -64,13 +53,8 @@ func (h *TCPServerHandler) StartTCPServer(c *gin.Context) {
 
 // StopTCPServer는 TCP 서버를 중지합니다. (실제로는 상태 변경만 수행)
 func (h *TCPServerHandler) StopTCPServer(c *gin.Context) {
-	id := c.Param("id")
-
-	// 서버 정보 조회
-	var server models.TCPServer
-	result := h.DB.First(&server, id)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "TCP 서버를 찾을 수 없습니다"})
+	server, ok := h.getServerByID(c)
+	if !ok {
 		return
 	}
 
@@ -87,13 +71,7 @@ func (h *TCPServerHandler) StopTCPServer(c *gin.Context) {
 
 // GetTCPRequests는 특정 TCP 서버와 관련된 요청 목록을 반환합니다.
 func (h *TCPServerHandler) GetTCPRequests(c *gin.Context) {
-	id := c.Param("id")
-
-	// 서버 정보 조회
-	var server models.TCPServer
-	result := h.DB.First(&server, id)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "TCP 서버를 찾을 수 없습니다"})
+	if _, ok := h.getServerByID(c); !ok {
 		return
 	}
 
@@ -104,13 +82,7 @@ func (h *TCPServerHandler) GetTCPRequests(c *gin.Context) {
 
 // GetTCPLogs는 특정 TCP 서버와 관련된 로그 목록을 반환합니다.
 func (h *TCPServerHandler) GetTCPLogs(c *gin.Context) {
-	id := c.Param("id")
-
-	// 서버 정보 조회
-	var server models.TCPServer
-	result := h.DB.First(&server, id)
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "TCP 서버를 찾을 수 없습니다"})
+	if _, ok := h.getServerByID(c); !ok {
 		return
 	}
 

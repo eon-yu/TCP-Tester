@@ -17,6 +17,20 @@ type TCPService struct {
 	DB *gorm.DB
 }
 
+// logConnection은 TCP 통신 결과를 데이터베이스에 기록합니다.
+func (s *TCPService) logConnection(requestID uint, serverName, serverAddr, sent, received string, success bool, errMsg string) {
+	tcpConn := models.TCPConnection{
+		RequestID:    requestID,
+		ServerName:   serverName,
+		ServerAddr:   serverAddr,
+		SentData:     sent,
+		ReceivedData: received,
+		Success:      success,
+		Error:        errMsg,
+	}
+	s.DB.Create(&tcpConn)
+}
+
 // NewTCPService는 새로운 TCPService 인스턴스를 생성합니다.
 func NewTCPService(db *gorm.DB) *TCPService {
 	return &TCPService{
@@ -45,19 +59,11 @@ func (s *TCPService) SendRequest(serverName, data string, requestID uint) (strin
 	}
 
 	// TCP 연결 생성
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", serverAddr, serverPort), 5*time.Second)
+	addr := fmt.Sprintf("%s:%s", serverAddr, serverPort)
+	conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
 	if err != nil {
 		// 연결 실패 기록
-		tcpConn := models.TCPConnection{
-			RequestID:  requestID,
-			ServerName: serverName,
-			ServerAddr: fmt.Sprintf("%s:%s", serverAddr, serverPort),
-			SentData:   data,
-			Success:    false,
-			Error:      err.Error(),
-		}
-		s.DB.Create(&tcpConn)
-
+		s.logConnection(requestID, serverName, addr, data, "", false, err.Error())
 		return "", fmt.Errorf("TCP 서버에 연결할 수 없습니다: %v", err)
 	}
 	defer conn.Close()
@@ -66,16 +72,7 @@ func (s *TCPService) SendRequest(serverName, data string, requestID uint) (strin
 	_, err = conn.Write([]byte(data))
 	if err != nil {
 		// 전송 실패 기록
-		tcpConn := models.TCPConnection{
-			RequestID:  requestID,
-			ServerName: serverName,
-			ServerAddr: fmt.Sprintf("%s:%s", serverAddr, serverPort),
-			SentData:   data,
-			Success:    false,
-			Error:      err.Error(),
-		}
-		s.DB.Create(&tcpConn)
-
+		s.logConnection(requestID, serverName, addr, data, "", false, err.Error())
 		return "", fmt.Errorf("데이터 전송 실패: %v", err)
 	}
 
@@ -85,31 +82,13 @@ func (s *TCPService) SendRequest(serverName, data string, requestID uint) (strin
 	n, err := conn.Read(response)
 	if err != nil && err != io.EOF {
 		// 읽기 실패 기록
-		tcpConn := models.TCPConnection{
-			RequestID:  requestID,
-			ServerName: serverName,
-			ServerAddr: fmt.Sprintf("%s:%s", serverAddr, serverPort),
-			SentData:   data,
-			Success:    false,
-			Error:      err.Error(),
-		}
-		s.DB.Create(&tcpConn)
-
+		s.logConnection(requestID, serverName, addr, data, "", false, err.Error())
 		return "", fmt.Errorf("응답 읽기 실패: %v", err)
 	}
 
 	responseStr := string(response[:n])
 
 	// 성공 기록
-	tcpConn := models.TCPConnection{
-		RequestID:    requestID,
-		ServerName:   serverName,
-		ServerAddr:   fmt.Sprintf("%s:%s", serverAddr, serverPort),
-		SentData:     data,
-		ReceivedData: responseStr,
-		Success:      true,
-	}
-	s.DB.Create(&tcpConn)
-
+	s.logConnection(requestID, serverName, addr, data, responseStr, true, "")
 	return responseStr, nil
 }

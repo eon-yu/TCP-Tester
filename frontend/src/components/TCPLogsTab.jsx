@@ -13,13 +13,9 @@ import {
   Chip
 } from '@mui/material';
 import { Refresh as RefreshIcon } from '@mui/icons-material';
+import { formatDate } from '../utils/format';
 
 const TCPLogsTab = ({ logs, onRefresh }) => {
-  // 날짜 포맷 함수
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString();
-  };
-
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
