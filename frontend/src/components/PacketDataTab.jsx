@@ -175,17 +175,19 @@ const PacketDataTab = ({ currentTCP }) => {
 
   // 행 추가
   const handleAddRow = () => {
-    const newOffset = packetData.length > 0 ? Math.max(...packetData.map(item => item.offset)) + 1 : 0;
-
-    const newRow = {
-      offset: newOffset,
-      value: 0,
-      type: 0, // Int8
-      is_chained: false,
-      desc: ''
-    };
-
-    setPacketData([...packetData, newRow]);
+    let newOffset = 0;
+    setPacketData(prev => {
+      newOffset = prev.length > 0 ? Math.max(...prev.map(item => item.offset)) + 1 : 0;
+      const newRow = {
+        offset: newOffset,
+        value: 0,
+        type: 0, // Int8
+        is_chained: false,
+        desc: ''
+      };
+      return [...prev, newRow];
+    });
+    return newOffset;
   };
 
   // 행 삭제
@@ -364,7 +366,7 @@ const PacketDataTab = ({ currentTCP }) => {
           case 8: return view.getFloat32(0, true).toString();
           case 9: return view.getFloat64(0, true).toString();
           case 10:
-            return new TextDecoder().decode(new Uint8Array(bytes));
+            return bytes.map(b => String.fromCharCode(b)).join('');
           case 11:
             return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
           default:
@@ -391,8 +393,9 @@ const PacketDataTab = ({ currentTCP }) => {
 
   // 체인된 값 변경 및 단일 값 처리
   const handleDisplayChange = (offset, value) => {
-    if (value === '') value = '0';
     let chain = getChainedItems(offset);
+    const typeForEmptyCheck = chain.length > 0 ? chain[0].type : packetData.find(item => item.offset === offset)?.type;
+    if (value === '' && typeForEmptyCheck !== 10 && typeForEmptyCheck !== 11) value = '0';
 
     // 체인이 아닌 경우 단일 항목을 체인처럼 처리
     if (chain.length === 0) {
@@ -492,9 +495,15 @@ const PacketDataTab = ({ currentTCP }) => {
           view.setFloat64(0, parseFloat(value) || 0, true);
           break;
         case 10: {
-          const bytes = Array.from(new TextEncoder().encode(value || '')).slice(0, chain.length);
-          bytes.forEach((b, i) => view.setUint8(i, b));
-          for (let i = bytes.length; i < chain.length; i++) {
+          for (const ch of value) {
+            if (ch.charCodeAt(0) > 127) {
+              showAlert('영문 및 특수문자만 입력 가능합니다', 'error');
+              return;
+            }
+          }
+          const chars = value.slice(0, chain.length).split('');
+          chars.forEach((ch, i) => view.setUint8(i, ch.charCodeAt(0)));
+          for (let i = chars.length; i < chain.length; i++) {
             view.setUint8(i, 0);
           }
           break;
