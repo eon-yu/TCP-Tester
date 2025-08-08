@@ -19,10 +19,15 @@ const TopPanel = ({ tcpServers, currentTCP, onSelectTCP, onTCPChange, loading })
   const handleStartTCP = async () => {
     if (currentTCP) {
       try {
-        await startTCPServer(currentTCP.id);
+        const res = await startTCPServer(currentTCP.id);
+        if (res.status !== 'Alive') {
+          alert(res.message || 'TCP 서버 시작 실패');
+        }
         onTCPChange(); // 서버 목록 갱신
       } catch (error) {
         console.error('TCP 서버 시작 실패:', error);
+        alert(error.message || 'TCP 서버 시작 실패');
+        onTCPChange();
       }
     }
   };
@@ -53,7 +58,7 @@ const TopPanel = ({ tcpServers, currentTCP, onSelectTCP, onTCPChange, loading })
 
   // TCP 서버 삭제
   const handleDeleteTCP = async () => {
-    if (currentTCP && currentTCP.status === 'Dead') {
+    if (currentTCP && ['Dead', 'Wait'].includes(currentTCP.status)) {
       try {
         await deleteTCPServer(currentTCP.id);
         onTCPChange(); // 서버 목록 갱신

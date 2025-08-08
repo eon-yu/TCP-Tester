@@ -26,9 +26,13 @@ const TCPActionButtons = ({ currentTCP, onAdd, onEdit, onDelete, onStart, onStop
         </span>
       </Tooltip>
 
-      <Tooltip title="TCP 서버 삭제 (오직 Dead 상태일 때만)">
+      <Tooltip title="TCP 서버 삭제 (Dead 또는 Wait 상태에서만)">
         <span>
-          <IconButton onClick={onDelete} color="error" disabled={!currentTCP || currentTCP.status !== 'Dead'}>
+          <IconButton
+            onClick={onDelete}
+            color="error"
+            disabled={!currentTCP || !['Dead', 'Wait'].includes(currentTCP.status)}
+          >
             <DeleteIcon />
           </IconButton>
         </span>
