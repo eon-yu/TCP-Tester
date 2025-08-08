@@ -100,7 +100,7 @@ func (h *TCPPacketHandler) UpdateTCPPacketInfo(c *gin.Context) {
 
 	var packet = &models.TCPPacket{}
 
-	result := h.DB.Find(packet).Where("id != ? and name = ?", packetID, updatedPacket.Name)
+	result := h.DB.Find(packet).Where("id != ? and name = ? AND deleted_at IS NULL", packetID, updatedPacket.Name)
 	if packet != nil || result.Error == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "패킷 이름을 변경할 수 없습니다."})
 		return

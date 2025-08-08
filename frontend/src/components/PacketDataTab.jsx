@@ -1,24 +1,24 @@
 import React from 'react';
 import {
-  Alert,
-  Box,
-  Button,
-  TextField,
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem,
-  Snackbar,
-  Typography
+    Alert,
+    Box,
+    Button,
+    ListItemIcon,
+    ListItemText,
+    Menu,
+    MenuItem,
+    Snackbar,
+    TextField,
+    Typography
 } from '@mui/material';
 import {
-  Add as AddIcon,
-  Delete as DeleteIcon,
-  Link as LinkIcon,
-  LinkOff as LinkOffIcon,
-  Refresh as RefreshIcon,
-  Save as SaveIcon,
-  Send as SendIcon
+    Add as AddIcon,
+    Delete as DeleteIcon,
+    Link as LinkIcon,
+    LinkOff as LinkOffIcon,
+    Refresh as RefreshIcon,
+    Save as SaveIcon,
+    Send as SendIcon
 } from '@mui/icons-material';
 import PacketDataTable from './packet/PacketDataTable';
 import PacketFormDialog from './packet/PacketFormDialog';
@@ -120,7 +120,7 @@ const PacketDataTab = ({ currentTCP }) => {
               onClick={() => handleSelectPacket(packet)}
               sx={{ mr: 1, mb: 1, whiteSpace: 'nowrap' }}
             >
-              {packet.desc || `패킷 ${packet.id}`}
+              {packet.name || `패킷 ${packet.id}`}
             </Button>
           ))}
         </Box>
