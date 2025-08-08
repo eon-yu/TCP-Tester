@@ -67,6 +67,13 @@ export async function stopTCPServer(id) {
   });
 }
 
+// TCP 서버 프로세스 강제 종료
+export async function killTCPServer(id) {
+  return await fetchWithErrorHandling(`${API_BASE_URL}/tcp/${id}/kill`, {
+    method: 'POST',
+  });
+}
+
 // TCP 요청 내역 조회
 export async function fetchTCPRequests(tcpId) {
   return await fetchWithErrorHandling(`${API_BASE_URL}/tcp/${tcpId}/requests`);

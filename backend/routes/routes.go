@@ -46,6 +46,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 			tc.GET("/:id/status", tcpServerHandler.CheckTCPStatus)   // TCP 서버 상태 확인
 			tc.POST("/:id/start", tcpServerHandler.StartTCPServer)   // TCP 서버 시작
 			tc.POST("/:id/stop", tcpServerHandler.StopTCPServer)     // TCP 서버 중지
+			tc.POST("/:id/kill", tcpServerHandler.KillTCPServer)     // TCP 서버 프로세스 종료
 			tc.GET("/:id/requests", tcpServerHandler.GetTCPRequests) // TCP 서버 요청 목록
 			tc.GET("/:id/logs", tcpServerHandler.GetTCPLogs)         // TCP 서버 로그 목록
 
