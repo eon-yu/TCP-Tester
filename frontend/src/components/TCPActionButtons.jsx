@@ -5,10 +5,11 @@ import {
   Settings as SettingsIcon,
   Delete as DeleteIcon,
   PlayCircle as PlayCircleIcon,
-  StopCircle as StopCircleIcon
+  StopCircle as StopCircleIcon,
+  PowerSettingsNew as PowerSettingsNewIcon
 } from '@mui/icons-material';
 
-const TCPActionButtons = ({ currentTCP, onAdd, onEdit, onDelete, onStart, onStop }) => (
+const TCPActionButtons = ({ currentTCP, onAdd, onEdit, onDelete, onStart, onStop, onKill }) => (
   <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
     <Box>
       <Tooltip title="TCP 서버 추가">
@@ -60,6 +61,21 @@ const TCPActionButtons = ({ currentTCP, onAdd, onEdit, onDelete, onStart, onStop
             onClick={onStop}
           >
             중지
+          </Button>
+        </span>
+      </Tooltip>
+
+      <Tooltip title="프로세스 강제 종료 (로컬에서만)">
+        <span>
+          <Button
+            startIcon={<PowerSettingsNewIcon />}
+            variant="contained"
+            color="error"
+            disabled={!currentTCP || currentTCP.status !== 'Alive' || !['127.0.0.1', 'localhost'].includes(currentTCP.host)}
+            onClick={onKill}
+            sx={{ ml: 1 }}
+          >
+            Kill
           </Button>
         </span>
       </Tooltip>

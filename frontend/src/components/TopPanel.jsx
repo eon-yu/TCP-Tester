@@ -9,7 +9,7 @@ import {
 import TCPServerDialog from './TCPServerDialog';
 import TCPList from './TCPList';
 import TCPActionButtons from './TCPActionButtons';
-import { startTCPServer, stopTCPServer, deleteTCPServer } from '../api/tcpApi';
+import { startTCPServer, stopTCPServer, deleteTCPServer, killTCPServer } from '../api/tcpApi';
 
 const TopPanel = ({ tcpServers, currentTCP, onSelectTCP, onTCPChange, loading }) => {
   const [openDialog, setOpenDialog] = useState(false);
@@ -35,6 +35,18 @@ const TopPanel = ({ tcpServers, currentTCP, onSelectTCP, onTCPChange, loading })
         onTCPChange(); // 서버 목록 갱신
       } catch (error) {
         console.error('TCP 서버 중지 실패:', error);
+      }
+    }
+  };
+
+  // TCP 서버 프로세스 강제 종료
+  const handleKillTCP = async () => {
+    if (currentTCP && (currentTCP.host === '127.0.0.1' || currentTCP.host === 'localhost')) {
+      try {
+        await killTCPServer(currentTCP.id);
+        onTCPChange(); // 서버 목록 갱신
+      } catch (error) {
+        console.error('TCP 프로세스 종료 실패:', error);
       }
     }
   };
@@ -135,6 +147,7 @@ const TopPanel = ({ tcpServers, currentTCP, onSelectTCP, onTCPChange, loading })
           onDelete={handleDeleteTCP}
           onStart={handleStartTCP}
           onStop={handleStopTCP}
+          onKill={handleKillTCP}
         />
       </Box>
 
