@@ -73,74 +73,15 @@ npm run dev
 ./run_build.sh
 ```
 
-## API 엔드포인트
+## 업데이트 내역
 
-### 상태 확인
+| 날짜 | 내용 | 관련 |
+| --- | --- | --- |
+| 2025-08-07 | `UpdateTCPPacketInfo` API로 패킷 정보 수정 기능 추가 | Backend |
+| 2025-08-05 | 패킷 편집 UI 모듈화 및 오류 처리 개선 | Frontend |
+| 2025-08-01 | 체인 행 색상 표시로 가독성 향상 | Frontend |
 
-```
-GET /api/health
-```
-
-### 요청 관리
-
-```
-GET /api/requests         # 모든 요청 목록 조회
-GET /api/requests/:id     # 특정 요청 상세 조회
-```
-
-### TCP 연결 관리
-
-```
-GET /api/tcp-connections  # 모든 TCP 연결 조회
-```
-
-### 프록시 요청
-
-```
-POST /api/proxy           # 기본 TCP 서버로 요청 전달
-POST /api/proxy/:server   # 지정된 TCP 서버로 요청 전달
-```
-
-### TCP 서버 관리
-
-```
-POST /api/tcp             # TCP 서버 등록
-GET /api/tcp              # TCP 서버 목록 조회
-GET /api/tcp/:id          # 특정 TCP 서버 조회
-PUT /api/tcp/:id          # TCP 서버 정보 수정
-DELETE /api/tcp/:id       # TCP 서버 삭제
-```
-
-### TCP 서버 상태 관리
-
-```
-GET /api/tcp/:id/status   # TCP 서버 상태 확인
-POST /api/tcp/:id/start   # TCP 서버 시작
-POST /api/tcp/:id/stop    # TCP 서버 중지
-GET /api/tcp/:id/requests # TCP 서버 요청 목록 조회
-GET /api/tcp/:id/logs     # TCP 서버 로그 목록 조회
-```
-
-### TCP 패킷 관리
-
-```
-POST /api/tcp/:id/packets                # TCP 패킷 생성
-GET /api/tcp/:id/packets                 # TCP 패킷 목록 조회
-GET /api/tcp/:id/packets/:packet_id      # 특정 TCP 패킷 조회
-PUT /api/tcp/:id/packets/:packet_id      # TCP 패킷 수정
-DELETE /api/tcp/:id/packets/:packet_id   # TCP 패킷 삭제
-POST /api/tcp/:id/packets/:packet_id/send # TCP 패킷 전송
-```
-
-#### TCP 서버 등록/수정 요청 형식
-
-```json
-{
-  "name": "서버 이름",
-  "host": "서버 호스트/IP",
-  "port": 9000
-}
-```
+![overview](https://via.placeholder.com/600x300.png?text=Fake+Edge+Server)
 
 ## 설정
 
