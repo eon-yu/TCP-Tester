@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"net"
+	"net/http"
+
 	"github.com/fake-edge-server/models"
 	"github.com/fake-edge-server/services"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"net/http"
 )
 
 // TCPServerHandler는 TCP 서버 관리를 위한 핸들러 구조체입니다.
@@ -27,6 +29,16 @@ func (h *TCPServerHandler) CreateTCPServer(c *gin.Context) {
 	var req models.TCPServerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "유효하지 않은 요청 형식: " + err.Error()})
+		return
+	}
+
+	if net.ParseIP(req.Host) == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "유효한 IP 주소를 입력해주세요"})
+		return
+	}
+
+	if req.Port < 1 || req.Port > 65535 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "유효한 포트 번호를 입력해주세요 (1-65535)"})
 		return
 	}
 
@@ -94,6 +106,16 @@ func (h *TCPServerHandler) UpdateTCPServer(c *gin.Context) {
 	var req models.TCPServerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "유효하지 않은 요청 형식: " + err.Error()})
+		return
+	}
+
+	if net.ParseIP(req.Host) == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "유효한 IP 주소를 입력해주세요"})
+		return
+	}
+
+	if req.Port < 1 || req.Port > 65535 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "유효한 포트 번호를 입력해주세요 (1-65535)"})
 		return
 	}
 

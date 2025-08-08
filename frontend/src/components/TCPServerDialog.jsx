@@ -49,6 +49,12 @@ const TCPServerDialog = ({ open, onClose, server }) => {
       return false;
     }
 
+    const ipRegex = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
+    if (!ipRegex.test(host)) {
+      setError('유효한 IP 주소를 입력해주세요');
+      return false;
+    }
+
     const portNum = parseInt(port, 10);
     if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
       setError('유효한 포트 번호를 입력해주세요 (1-65535)');
@@ -119,7 +125,7 @@ const TCPServerDialog = ({ open, onClose, server }) => {
             value={host}
             onChange={(e) => setHost(e.target.value)}
             disabled={submitting}
-            placeholder="예: 127.0.0.1 또는 example.com"
+            placeholder="예: 127.0.0.1"
           />
 
           <TextField
