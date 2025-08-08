@@ -44,12 +44,12 @@ export async function deleteTCPServer(id) {
 export async function checkTCPStatus(id) {
   try {
     const response = await fetch(`${API_BASE_URL}/tcp/${id}/status`);
-    if (!response.ok) return false;
+    if (!response.ok) return 'Dead';
     const data = await response.json();
-    return data.status === 'Alive';
+    return data.status;
   } catch (error) {
     console.error('TCP 상태 확인 실패:', error);
-    return false;
+    return 'Dead';
   }
 }
 

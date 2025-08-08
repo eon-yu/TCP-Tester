@@ -127,9 +127,15 @@ const TopPanel = ({ tcpServers, currentTCP, onSelectTCP, onTCPChange, loading })
               <Typography variant="body1" sx={{ mr: 1 }}>
                 {currentTCP.name} ({currentTCP.host}:{currentTCP.port})
               </Typography>
-              <Chip 
+              <Chip
                 label={currentTCP.status}
-                color={currentTCP.status === 'Alive' ? 'success' : 'error'}
+                color={
+                  currentTCP.status === 'Alive'
+                    ? 'success'
+                    : currentTCP.status === 'Dead'
+                    ? 'error'
+                    : 'default'
+                }
                 size="small"
               />
             </Box>

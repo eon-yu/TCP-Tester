@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/fake-edge-server/models"
+	"github.com/fake-edge-server/services"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"net/http"
@@ -9,13 +10,15 @@ import (
 
 // TCPServerHandler는 TCP 서버 관리를 위한 핸들러 구조체입니다.
 type TCPServerHandler struct {
-	DB *gorm.DB
+	DB          *gorm.DB
+	ConnManager *services.TCPConnectionManager
 }
 
 // NewTCPServerHandler는 새로운 TCPServerHandler 인스턴스를 생성합니다.
-func NewTCPServerHandler(db *gorm.DB) *TCPServerHandler {
+func NewTCPServerHandler(db *gorm.DB, mgr *services.TCPConnectionManager) *TCPServerHandler {
 	return &TCPServerHandler{
-		DB: db,
+		DB:          db,
+		ConnManager: mgr,
 	}
 }
 

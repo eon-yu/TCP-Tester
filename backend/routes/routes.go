@@ -9,12 +9,13 @@ import (
 
 // SetupRoutes는 애플리케이션의 라우트를 설정합니다.
 func SetupRoutes(r *gin.Engine, db *gorm.DB) {
-	// TCP 서비스 생성
+	// TCP 서비스 및 연결 관리자 생성
 	tcpService := services.NewTCPService(db)
+	connManager := services.NewTCPConnectionManager()
 
 	// API 핸들러 생성
 	apiHandler := handlers.NewAPIHandler(db, tcpService)
-	tcpServerHandler := handlers.NewTCPServerHandler(db)
+	tcpServerHandler := handlers.NewTCPServerHandler(db, connManager)
 	tcpPacketHandler := handlers.NewTCPPacketHandler(db)
 
 	// 라우트 그룹
