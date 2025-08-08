@@ -9,7 +9,7 @@ export const loadTcpServers = createAsyncThunk(
     const serversWithStatus = await Promise.all(
       servers.map(async (server) => {
         const status = await checkTCPStatus(server.id);
-        return { ...server, status: status ? 'Alive' : 'Dead' };
+        return { ...server, status };
       })
     );
     return serversWithStatus;

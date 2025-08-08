@@ -28,9 +28,15 @@ const TCPList = ({ tcpServers, currentTCP, onSelectTCP }) => {
           key={server.id}
           disablePadding
           secondaryAction={
-            <Chip 
+            <Chip
               label={server.status}
-              color={server.status === 'Alive' ? 'success' : 'error'}
+              color={
+                server.status === 'Alive'
+                  ? 'success'
+                  : server.status === 'Dead'
+                  ? 'error'
+                  : 'default'
+              }
               size="small"
             />
           }

@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,16 +18,7 @@ func (h *TCPServerHandler) CheckTCPStatus(c *gin.Context) {
 		return
 	}
 
-	// TCP 연결 시도
-	addr := net.JoinHostPort(server.Host, strconv.Itoa(server.Port))
-	conn, err := net.DialTimeout("tcp", addr, 3*time.Second)
-
-	status := "Dead"
-	if err == nil {
-		status = "Alive"
-		conn.Close()
-	}
-
+	status := h.ConnManager.GetStatus(server.ID)
 	c.JSON(http.StatusOK, gin.H{
 		"id":     server.ID,
 		"name":   server.Name,
@@ -36,15 +26,21 @@ func (h *TCPServerHandler) CheckTCPStatus(c *gin.Context) {
 	})
 }
 
-// StartTCPServer는 TCP 서버를 시작합니다. (실제로는 상태 변경만 수행)
+// StartTCPServer는 TCP 서버와의 연결을 시작합니다.
 func (h *TCPServerHandler) StartTCPServer(c *gin.Context) {
 	server, ok := h.getServerByID(c)
 	if !ok {
 		return
 	}
-
-	// 실제 환경에서는 여기서 TCP 서버 시작 로직을 구현
-	// 이 예제에서는 상태만 반환
+	if err := h.ConnManager.Connect(server.ID, server.Host, server.Port); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"id":      server.ID,
+			"name":    server.Name,
+			"message": "TCP 서버 연결 실패",
+			"status":  h.ConnManager.GetStatus(server.ID),
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"id":      server.ID,
@@ -54,21 +50,19 @@ func (h *TCPServerHandler) StartTCPServer(c *gin.Context) {
 	})
 }
 
-// StopTCPServer는 TCP 서버를 중지합니다. (실제로는 상태 변경만 수행)
+// StopTCPServer는 TCP 연결을 중지합니다.
 func (h *TCPServerHandler) StopTCPServer(c *gin.Context) {
 	server, ok := h.getServerByID(c)
 	if !ok {
 		return
 	}
-
-	// 실제 환경에서는 여기서 TCP 서버 중지 로직을 구현
-	// 이 예제에서는 상태만 반환
+	h.ConnManager.Disconnect(server.ID)
 
 	c.JSON(http.StatusOK, gin.H{
 		"id":      server.ID,
 		"name":    server.Name,
 		"message": "TCP 서버 중지됨",
-		"status":  "Dead",
+		"status":  "Wait",
 	})
 }
 
@@ -107,7 +101,7 @@ func (h *TCPServerHandler) KillTCPServer(c *gin.Context) {
 	}
 
 	addr := net.JoinHostPort(server.Host, strconv.Itoa(server.Port))
-	conn, err := net.DialTimeout("tcp", addr, 3*time.Second)
+	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "포트가 활성화되어 있지 않습니다"})
 		return
@@ -124,6 +118,8 @@ func (h *TCPServerHandler) KillTCPServer(c *gin.Context) {
 	for _, pid := range strings.Fields(string(output)) {
 		_ = exec.Command("kill", "-9", pid).Run()
 	}
+
+	h.ConnManager.MarkDead(server.ID)
 
 	c.JSON(http.StatusOK, gin.H{
 		"id":      server.ID,
