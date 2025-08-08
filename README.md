@@ -81,7 +81,8 @@ npm run dev
 | 2025-08-05 | 패킷 편집 UI 모듈화 및 오류 처리 개선 | Frontend |
 | 2025-08-01 | 체인 행 색상 표시로 가독성 향상 | Frontend |
 
-![overview](https://via.placeholder.com/600x300.png?text=Fake+Edge+Server)
+<img width="2956" height="1772" alt="image" src="https://github.com/user-attachments/assets/92e65257-af25-42af-9175-3bfc221460a1" />
+
 
 ## 설정
 
