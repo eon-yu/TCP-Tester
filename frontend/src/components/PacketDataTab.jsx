@@ -24,8 +24,7 @@ import PacketDataTable from './packet/PacketDataTable';
 import PacketFormDialog from './packet/PacketFormDialog';
 import TypeSelectDialog from './packet/TypeSelectDialog';
 import ConfirmUnchainDialog from './packet/ConfirmUnchainDialog';
-import ResponseDialog from './packet/ResponseDialog';
-import ResponseList from './packet/ResponseList';
+import ResponseHistoryPanel from './packet/ResponseHistoryPanel';
 import usePacketData from '../hooks/usePacketData';
 
 const PacketDataTab = ({ currentTCP }) => {
@@ -42,7 +41,6 @@ const PacketDataTab = ({ currentTCP }) => {
     openTypeDialog,
     selectedType,
     alertInfo,
-    responseDialog,
     confirmUnchain,
     msgIdOffset,
     currentMsgId,
@@ -53,7 +51,6 @@ const PacketDataTab = ({ currentTCP }) => {
     setOpenDialog,
     setOpenTypeDialog,
     setSelectedType,
-    setResponseDialog,
     setConfirmUnchain,
     setPacketData,
     loadPackets,
@@ -205,10 +202,7 @@ const PacketDataTab = ({ currentTCP }) => {
         handleDeleteRow={handleDeleteRow}
       />
 
-      <ResponseList
-        responses={responseHistory}
-        onSelect={(res) => setResponseDialog({ open: true, response: res })}
-      />
+      <ResponseHistoryPanel history={responseHistory} />
 
       <PacketFormDialog
         open={openDialog}
@@ -290,11 +284,6 @@ const PacketDataTab = ({ currentTCP }) => {
         </Alert>
       </Snackbar>
 
-      <ResponseDialog
-        open={responseDialog.open}
-        response={responseDialog.response}
-        onClose={() => setResponseDialog({ open: false, response: null })}
-      />
     </Box>
   );
 };
