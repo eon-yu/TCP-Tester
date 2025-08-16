@@ -168,6 +168,20 @@ func (h *TCPPacketHandler) DeleteTCPPacket(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "패킷이 성공적으로 삭제되었습니다"})
 }
 
+// GetTCPPacketHistory는 특정 TCP 서버에 대한 요청/응답 이력을 반환합니다.
+func (h *TCPPacketHandler) GetTCPPacketHistory(c *gin.Context) {
+	serverID := c.Param("id")
+
+	var history []models.TCPPacketHistory
+	result := h.DB.Where("tcp_server_id = ?", serverID).Order("created_at desc").Find(&history)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "이력 조회 실패: " + result.Error.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, history)
+}
+
 // SendTCPPacket은 TCP 패킷을 지정된 서버로 전송합니다.
 func (h *TCPPacketHandler) SendTCPPacket(c *gin.Context) {
 	packetID := c.Param("packet_id")
@@ -218,11 +232,22 @@ func (h *TCPPacketHandler) SendTCPPacket(c *gin.Context) {
 
 	// 응답 처리
 	response := buffer[:n]
-	c.JSON(http.StatusOK, gin.H{
-		"message":       "패킷이 성공적으로 전송되었습니다",
-		"response":      hex.EncodeToString(response),
-		"response_text": string(response),
-	})
+	requestHex := hex.EncodeToString(data)
+	responseHex := hex.EncodeToString(response)
+
+	history := models.TCPPacketHistory{
+		TCPServerID: server.ID,
+		TCPPacketID: packet.ID,
+		Request:     requestHex,
+		Response:    responseHex,
+	}
+
+	if err := h.DB.Create(&history).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "이력 저장 실패: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, history)
 }
 
 // validatePacketData는 체인된 데이터의 길이가 타입 크기와 일치하는지 검증합니다.

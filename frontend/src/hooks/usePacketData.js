@@ -4,6 +4,7 @@ import {
     deleteTCPPacket,
     fetchTCPPackets,
     sendTCPPacket,
+    fetchTCPPacketHistory,
     updateTCPPacketData,
     updateTCPPacketInfo
 } from '../api/packetApi';
@@ -22,7 +23,6 @@ const usePacketData = (currentTCP) => {
   const [openTypeDialog, setOpenTypeDialog] = useState(false);
   const [selectedType, setSelectedType] = useState(0);
   const [alertInfo, setAlertInfo] = useState({ open: false, message: '', severity: 'info' });
-  const [responseDialog, setResponseDialog] = useState({ open: false, response: null });
   const [confirmUnchain, setConfirmUnchain] = useState({ open: false, groups: [] });
   const [msgIdOffset, setMsgIdOffset] = useState(0);
   const [currentMsgId, setCurrentMsgId] = useState([]);
@@ -30,6 +30,34 @@ const usePacketData = (currentTCP) => {
 
   const bytesToHex = (bytes) => Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
   const hexToBytes = (hex) => (hex.match(/.{1,2}/g) || []).map(b => parseInt(b, 16));
+
+  const loadHistory = async (packetList = packets) => {
+    if (!currentTCP) return;
+    try {
+      const history = await fetchTCPPacketHistory(currentTCP.id);
+      const packetMap = (packetList || []).reduce((acc, p) => {
+        acc[p.id] = p.desc || `패킷 ${p.id}`;
+        return acc;
+      }, {});
+      const mapped = history.map(h => {
+        const reqBytes = hexToBytes(h.request || '');
+        const respBytes = hexToBytes(h.response || '');
+        const msgIdBytes = reqBytes.slice(msgIdOffset, msgIdOffset + 8);
+        const messageId = bytesToHex(msgIdBytes);
+        const valid = msgIdBytes.length === 8 && respBytes.slice(msgIdOffset, msgIdOffset + 8).every((b, i) => b === msgIdBytes[i]);
+        return {
+          packetName: packetMap[h.tcp_packet_id] || `패킷 ${h.tcp_packet_id}`,
+          messageId,
+          requestData: reqBytes.map((v, i) => ({ offset: i, value: v })),
+          responseData: respBytes.map((v, i) => ({ offset: i, value: v })),
+          valid
+        };
+      });
+      setResponseHistory(mapped);
+    } catch (error) {
+      console.error('응답 이력 로드 실패:', error);
+    }
+  };
 
   const handleGenerateMessageId = () => {
     const id = crypto.getRandomValues(new Uint8Array(8));
@@ -63,6 +91,7 @@ const usePacketData = (currentTCP) => {
         setPacketData(data[0].data || []);
         setPacketDesc(data[0].desc || '');
       }
+      await loadHistory(data);
       console.log('로드된 패킷:', data);
     } catch (error) {
       console.error('패킷 데이터 로드 실패:', error);
@@ -616,23 +645,23 @@ const usePacketData = (currentTCP) => {
 
     try {
       setLoading(true);
-      const response = await sendTCPPacket(currentTCP.id, selectedPacket.id);
+      const history = await sendTCPPacket(currentTCP.id, selectedPacket.id);
 
-      const requestFrame = [...packetData]
-        .sort((a, b) => a.offset - b.offset)
-        .map(item => ({ offset: item.offset, value: item.value }));
-      const respBytes = hexToBytes(response.response || '');
+      const reqBytes = hexToBytes(history.request || '');
+      const respBytes = hexToBytes(history.response || '');
+      const requestFrame = reqBytes.map((v, i) => ({ offset: i, value: v }));
       const responseFrame = respBytes.map((v, i) => ({ offset: i, value: v }));
-      const valid = currentMsgId.length === 8 && respBytes.slice(msgIdOffset, msgIdOffset + 8).every((b, i) => b === currentMsgId[i]);
+      const msgId = reqBytes.slice(msgIdOffset, msgIdOffset + 8);
+      setCurrentMsgId(msgId);
+      const valid = msgId.length === 8 && respBytes.slice(msgIdOffset, msgIdOffset + 8).every((b, i) => b === msgId[i]);
       const historyItem = {
         packetName: selectedPacket.desc || `패킷 ${selectedPacket.id}`,
-        messageId: bytesToHex(currentMsgId),
+        messageId: bytesToHex(msgId),
         requestData: requestFrame,
         responseData: responseFrame,
         valid
       };
       setResponseHistory(prev => [historyItem, ...prev]);
-      setResponseDialog({ open: true, response: historyItem });
 
       if (!valid) {
         showAlert('비정상적인 응답이 수신되었습니다', 'warning');
@@ -677,7 +706,6 @@ const usePacketData = (currentTCP) => {
     openTypeDialog,
     selectedType,
     alertInfo,
-    responseDialog,
     confirmUnchain,
     msgIdOffset,
     currentMsgId,
@@ -688,7 +716,6 @@ const usePacketData = (currentTCP) => {
     setOpenDialog,
     setOpenTypeDialog,
     setSelectedType,
-    setResponseDialog,
     setConfirmUnchain,
     setPacketData,
     loadPackets,

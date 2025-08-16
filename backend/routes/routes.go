@@ -56,6 +56,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 			tc.DELETE("/:id/packets/:id", tcpPacketHandler.DeleteTCPPacket)
 			tc.PUT("/:id/packets/:id", tcpPacketHandler.UpdateTCPPacketInfo)
 			tc.PUT("/:id/packets/:id/data", tcpPacketHandler.UpdateTCPPacketData)
+			tc.POST("/:id/packets/:packet_id/send", tcpPacketHandler.SendTCPPacket)
+			tc.GET("/:id/history", tcpPacketHandler.GetTCPPacketHistory)
 
 		}
 	}

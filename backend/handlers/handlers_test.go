@@ -27,6 +27,7 @@ func setupTestDB() *gorm.DB {
 		&models.TCPConnection{},
 		&models.TCPServer{},
 		&models.TCPPacket{},
+		&models.TCPPacketHistory{},
 	)
 	if err != nil {
 		panic("마이그레이션 실패: " + err.Error())

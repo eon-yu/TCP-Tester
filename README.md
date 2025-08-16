@@ -9,6 +9,7 @@ Fake-Edge-Server는 REST API를 제공하고 다른 서버와 TCP 통신을 수�
 - SQLite3 데이터베이스 사용 (GORM ORM 사용)
 - 요청 및 TCP 연결 로깅
 - 프론트엔드와의 통합 (React + MUI)
+- 패킷 요청/응답 이력 저장 및 조회
 
 ## 프로젝트 구조
 
@@ -77,6 +78,7 @@ npm run dev
 
 | 날짜 | 내용 | 관련 |
 | --- | --- | --- |
+| 2025-08-08 | 패킷 요청/응답 이력 저장 및 UI 조회 기능 추가 | Frontend/Backend |
 | 2025-08-07 | `UpdateTCPPacketInfo` API로 패킷 정보 수정 기능 추가 | Backend |
 | 2025-08-05 | 패킷 편집 UI 모듈화 및 오류 처리 개선 | Frontend |
 | 2025-08-01 | 체인 행 색상 표시로 가독성 향상 | Frontend |

@@ -21,6 +21,7 @@ func InitDB() (*gorm.DB, error) {
 		&models.TCPConnection{},
 		&models.TCPServer{},
 		&models.TCPPacket{},
+		&models.TCPPacketHistory{},
 	)
 	if err != nil {
 		return nil, err

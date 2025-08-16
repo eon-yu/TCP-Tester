@@ -60,3 +60,8 @@ export async function sendTCPPacket(tcpId, packetId) {
     method: 'POST',
   });
 }
+
+// TCP 요청/응답 이력 조회
+export async function fetchTCPPacketHistory(tcpId) {
+  return await fetchWithErrorHandling(`${API_BASE_URL}/tcp/${tcpId}/history`);
+}
