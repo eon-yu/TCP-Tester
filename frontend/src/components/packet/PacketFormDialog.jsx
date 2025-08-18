@@ -6,8 +6,6 @@ import {
   DialogActions,
   Button,
   TextField,
-  FormControlLabel,
-  Checkbox,
 } from "@mui/material";
 
 const PacketFormDialog = ({
@@ -15,10 +13,8 @@ const PacketFormDialog = ({
   loading,
   packetName,
   packetDesc,
-  useCRC,
   setPacketName,
   setPacketDesc,
-  setUseCRC,
   selectedPacket,
   onSave,
   onClose,
@@ -41,15 +37,6 @@ const PacketFormDialog = ({
         fullWidth
         margin="normal"
         placeholder="패킷의 용도나 특징을 간단히 설명해주세요"
-      />
-      <FormControlLabel
-        control={
-          <Checkbox
-            checked={useCRC}
-            onChange={(e) => setUseCRC(e.target.checked)}
-          />
-        }
-        label="CRC 적용"
       />
     </DialogContent>
     <DialogActions>

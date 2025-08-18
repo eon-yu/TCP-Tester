@@ -10,6 +10,8 @@ import {
   Snackbar,
   TextField,
   Typography,
+  FormControlLabel,
+  Checkbox,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -48,9 +50,10 @@ const PacketDataTab = ({ currentTCP }) => {
     responseHistory,
     intervalMs,
     isSending,
+    sendCount,
     setPacketName,
     setPacketDesc,
-    setUseCRC,
+    handleCRCChange,
     setMsgIdOffset,
     setOpenDialog,
     setOpenTypeDialog,
@@ -85,6 +88,7 @@ const PacketDataTab = ({ currentTCP }) => {
     autoSave,
     bytesToHex,
     setIntervalMs,
+    setSendCount,
   } = usePacketData(currentTCP);
   return (
     <Box>
@@ -205,16 +209,35 @@ const PacketDataTab = ({ currentTCP }) => {
               value={intervalMs}
               onChange={(e) => setIntervalMs(parseInt(e.target.value) || 0)}
               sx={{ width: 120, mr: 1 }}
-              disabled={isSending}
+              disabled={isSending && sendCount === 0}
+            />
+            <TextField
+              type="number"
+              label="Count"
+              size="small"
+              value={sendCount}
+              onChange={(e) => setSendCount(parseInt(e.target.value) || 0)}
+              sx={{ width: 100, mr: 1 }}
+              disabled={isSending && sendCount === 0}
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={useCRC}
+                  onChange={(e) => handleCRCChange(e.target.checked)}
+                />
+              }
+              label="CRC 적용"
+              sx={{ mr: 1 }}
             />
             <Button
-              color={isSending ? "error" : "success"}
+              color={isSending && sendCount === 0 ? "error" : "success"}
               variant="contained"
               startIcon={<SendIcon />}
               onClick={handleSendPacket}
               disabled={loading || packetData.length === 0}
             >
-              {isSending ? "중지" : "전송"}
+              {isSending && sendCount === 0 ? "중지" : "전송"}
             </Button>
           </Box>
         </Box>
@@ -245,10 +268,8 @@ const PacketDataTab = ({ currentTCP }) => {
         loading={loading}
         packetName={packetName}
         packetDesc={packetDesc}
-        useCRC={useCRC}
         setPacketName={setPacketName}
         setPacketDesc={setPacketDesc}
-        setUseCRC={setUseCRC}
         selectedPacket={selectedPacket}
         onSave={selectedPacket ? handleUpdatePacketInfo : handleCreatePacket}
         onClose={() => setOpenDialog(false)}
