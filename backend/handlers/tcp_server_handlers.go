@@ -14,13 +14,15 @@ import (
 type TCPServerHandler struct {
 	DB          *gorm.DB
 	ConnManager *services.TCPConnectionManager
+	Hub         *services.WebSocketHub
 }
 
 // NewTCPServerHandler는 새로운 TCPServerHandler 인스턴스를 생성합니다.
-func NewTCPServerHandler(db *gorm.DB, mgr *services.TCPConnectionManager) *TCPServerHandler {
+func NewTCPServerHandler(db *gorm.DB, mgr *services.TCPConnectionManager, hub *services.WebSocketHub) *TCPServerHandler {
 	return &TCPServerHandler{
 		DB:          db,
 		ConnManager: mgr,
+		Hub:         hub,
 	}
 }
 

@@ -12,17 +12,21 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	// TCP 서비스 및 연결 관리자 생성
 	tcpService := services.NewTCPService(db)
 	connManager := services.NewTCPConnectionManager()
+	hub := services.NewWebSocketHub()
+	sender := services.NewPacketSender(db, connManager, hub)
 
 	// API 핸들러 생성
 	apiHandler := handlers.NewAPIHandler(db, tcpService)
-	tcpServerHandler := handlers.NewTCPServerHandler(db, connManager)
-	tcpPacketHandler := handlers.NewTCPPacketHandler(db, connManager)
+	tcpServerHandler := handlers.NewTCPServerHandler(db, connManager, hub)
+	tcpPacketHandler := handlers.NewTCPPacketHandler(db, connManager, hub, sender)
+	wsHandler := handlers.NewWSHandler(hub)
 
 	// 라우트 그룹
 	api := r.Group("/api")
 	{
 		// 상태 확인 엔드포인트
 		api.GET("/health", apiHandler.GetHealth)
+		api.GET("/ws", wsHandler.Handle)
 
 		// 요청 관련 엔드포인트
 		api.GET("/requests", apiHandler.GetRequests)
@@ -57,6 +61,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 			tc.PUT("/:id/packets/:packet_id", tcpPacketHandler.UpdateTCPPacketInfo)
 			tc.PUT("/:id/packets/:packet_id/data", tcpPacketHandler.UpdateTCPPacketData)
 			tc.POST("/:id/packets/:packet_id/send", tcpPacketHandler.SendTCPPacket)
+			tc.POST("/:id/packets/:packet_id/stop", tcpPacketHandler.StopTCPPacketSend)
 			tc.GET("/:id/history", tcpPacketHandler.GetTCPPacketHistory)
 
 		}

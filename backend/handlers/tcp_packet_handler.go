@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/fake-edge-server/models"
 	"github.com/fake-edge-server/services"
@@ -17,16 +18,19 @@ import (
 
 // TCPPacketHandler는 TCP 패킷 관리를 위한 핸들러 구조체입니다.
 type TCPPacketHandler struct {
-	DB *gorm.DB
-
+	DB          *gorm.DB
 	ConnManager *services.TCPConnectionManager
+	Hub         *services.WebSocketHub
+	Sender      *services.PacketSender
 }
 
 // NewTCPPacketHandler는 새로운 TCPPacketHandler 인스턴스를 생성합니다.
-func NewTCPPacketHandler(db *gorm.DB, connManager *services.TCPConnectionManager) *TCPPacketHandler {
+func NewTCPPacketHandler(db *gorm.DB, connManager *services.TCPConnectionManager, hub *services.WebSocketHub, sender *services.PacketSender) *TCPPacketHandler {
 	return &TCPPacketHandler{
 		DB:          db,
 		ConnManager: connManager,
+		Hub:         hub,
+		Sender:      sender,
 	}
 }
 
@@ -115,6 +119,7 @@ func (h *TCPPacketHandler) UpdateTCPPacketInfo(c *gin.Context) {
 		return
 	}
 
+	h.Hub.Broadcast(gin.H{"type": "packet_update", "packet": packet})
 	c.JSON(http.StatusOK, packet)
 }
 
@@ -148,6 +153,7 @@ func (h *TCPPacketHandler) UpdateTCPPacketData(c *gin.Context) {
 		return
 	}
 
+	h.Hub.Broadcast(gin.H{"type": "packet_update", "packet": packet})
 	c.JSON(http.StatusOK, packet)
 }
 
@@ -206,48 +212,46 @@ func (h *TCPPacketHandler) SendTCPPacket(c *gin.Context) {
 		return
 	}
 
-	// 패킷 데이터를 바이트 배열로 변환
-	data := packetDataToBytes(packet.Data)
-	conn := h.ConnManager.GetConn(server.ID)
-	// TCP 연결 설정
-	if conn == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "TCP 연결 실패: 연결이 없습니다."})
+	var body struct {
+		IntervalMs int `json:"interval_ms"`
+	}
+	if c.ContentType() == "application/json" {
+		_ = c.ShouldBindJSON(&body)
+	}
+
+	if body.IntervalMs > 0 {
+		h.Sender.Start(server, packet, time.Duration(body.IntervalMs)*time.Millisecond)
+		c.JSON(http.StatusOK, gin.H{"message": "started"})
 		return
 	}
 
-	// 데이터 전송
-	_, err := conn.Write(data)
+	history, err := h.Sender.SendOnce(server, packet)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "데이터 전송 실패: " + err.Error()})
-		return
-	}
-
-	// 응답 수신
-	buffer := make([]byte, 4096)
-	n, err := conn.Read(buffer)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "응답 수신 실패: " + err.Error()})
-		return
-	}
-
-	// 응답 처리
-	response := buffer[:n]
-	requestHex := hex.EncodeToString(data)
-	responseHex := hex.EncodeToString(response)
-
-	history := models.TCPPacketHistory{
-		TCPServerID: server.ID,
-		TCPPacketID: packet.ID,
-		Request:     requestHex,
-		Response:    responseHex,
-	}
-
-	if err := h.DB.Create(&history).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "이력 저장 실패: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, history)
+}
+
+// StopTCPPacketSend stops the background sending job for a packet.
+func (h *TCPPacketHandler) StopTCPPacketSend(c *gin.Context) {
+	packetID := c.Param("packet_id")
+	serverID := c.Param("id")
+
+	pid, err := strconv.Atoi(packetID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "유효하지 않은 패킷 ID"})
+		return
+	}
+	sid, err := strconv.Atoi(serverID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "유효하지 않은 서버 ID"})
+		return
+	}
+
+	h.Sender.Stop(uint(sid), uint(pid))
+	c.JSON(http.StatusOK, gin.H{"message": "stopped"})
 }
 
 // validatePacketData는 체인된 데이터의 길이가 타입 크기와 일치하는지 검증합니다.
