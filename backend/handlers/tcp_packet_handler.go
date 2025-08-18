@@ -5,12 +5,12 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"net"
 	"net/http"
 	"sort"
 	"strconv"
 
 	"github.com/fake-edge-server/models"
+	"github.com/fake-edge-server/services"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -18,12 +18,15 @@ import (
 // TCPPacketHandler는 TCP 패킷 관리를 위한 핸들러 구조체입니다.
 type TCPPacketHandler struct {
 	DB *gorm.DB
+
+	ConnManager *services.TCPConnectionManager
 }
 
 // NewTCPPacketHandler는 새로운 TCPPacketHandler 인스턴스를 생성합니다.
-func NewTCPPacketHandler(db *gorm.DB) *TCPPacketHandler {
+func NewTCPPacketHandler(db *gorm.DB, connManager *services.TCPConnectionManager) *TCPPacketHandler {
 	return &TCPPacketHandler{
-		DB: db,
+		DB:          db,
+		ConnManager: connManager,
 	}
 }
 
@@ -205,18 +208,15 @@ func (h *TCPPacketHandler) SendTCPPacket(c *gin.Context) {
 
 	// 패킷 데이터를 바이트 배열로 변환
 	data := packetDataToBytes(packet.Data)
-
+	conn := h.ConnManager.GetConn(server.ID)
 	// TCP 연결 설정
-	addr := fmt.Sprintf("%s:%d", server.Host, server.Port)
-	conn, err := net.Dial("tcp", addr)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "TCP 연결 실패: " + err.Error()})
+	if conn == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "TCP 연결 실패: 연결이 없습니다."})
 		return
 	}
-	defer conn.Close()
 
 	// 데이터 전송
-	_, err = conn.Write(data)
+	_, err := conn.Write(data)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "데이터 전송 실패: " + err.Error()})
 		return

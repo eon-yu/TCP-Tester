@@ -93,3 +93,12 @@ func (m *TCPConnectionManager) GetStatus(id uint) string {
 	}
 	return "Wait"
 }
+
+func (m *TCPConnectionManager) GetConn(id uint) net.Conn {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if conn, ok := m.conns[id]; ok {
+		return conn
+	}
+	return nil
+}

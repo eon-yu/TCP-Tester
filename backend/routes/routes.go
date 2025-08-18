@@ -16,7 +16,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	// API 핸들러 생성
 	apiHandler := handlers.NewAPIHandler(db, tcpService)
 	tcpServerHandler := handlers.NewTCPServerHandler(db, connManager)
-	tcpPacketHandler := handlers.NewTCPPacketHandler(db)
+	tcpPacketHandler := handlers.NewTCPPacketHandler(db, connManager)
 
 	// 라우트 그룹
 	api := r.Group("/api")
@@ -53,9 +53,9 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 
 			tc.GET("/:id/packets", tcpPacketHandler.GetTCPPackets) // 특정 TCP 서버 조회
 			tc.POST("/:id/packets", tcpPacketHandler.CreateTCPPacket)
-                        tc.DELETE("/:id/packets/:packet_id", tcpPacketHandler.DeleteTCPPacket)
-                        tc.PUT("/:id/packets/:packet_id", tcpPacketHandler.UpdateTCPPacketInfo)
-                        tc.PUT("/:id/packets/:packet_id/data", tcpPacketHandler.UpdateTCPPacketData)
+			tc.DELETE("/:id/packets/:packet_id", tcpPacketHandler.DeleteTCPPacket)
+			tc.PUT("/:id/packets/:packet_id", tcpPacketHandler.UpdateTCPPacketInfo)
+			tc.PUT("/:id/packets/:packet_id/data", tcpPacketHandler.UpdateTCPPacketData)
 			tc.POST("/:id/packets/:packet_id/send", tcpPacketHandler.SendTCPPacket)
 			tc.GET("/:id/history", tcpPacketHandler.GetTCPPacketHistory)
 

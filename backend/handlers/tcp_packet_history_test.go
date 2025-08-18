@@ -9,15 +9,16 @@ import (
 	"testing"
 
 	"github.com/fake-edge-server/models"
+	"github.com/fake-edge-server/services"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 )
 
-func setupPacketRouter(db *gorm.DB) *gin.Engine {
+func setupPacketRouter(db *gorm.DB, connManager *services.TCPConnectionManager) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	handler := NewTCPPacketHandler(db)
+	handler := NewTCPPacketHandler(db, connManager)
 	tc := r.Group("/api/tcp")
 	{
 		tc.POST("/:id/packets/:packet_id/send", handler.SendTCPPacket)
@@ -28,7 +29,8 @@ func setupPacketRouter(db *gorm.DB) *gin.Engine {
 
 func TestSendTCPPacketStoresHistory(t *testing.T) {
 	db := setupTestDB()
-	router := setupPacketRouter(db)
+	connManager := services.NewTCPConnectionManager()
+	router := setupPacketRouter(db, connManager)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	assert.NoError(t, err)
@@ -65,7 +67,8 @@ func TestSendTCPPacketStoresHistory(t *testing.T) {
 
 func TestGetTCPPacketHistory(t *testing.T) {
 	db := setupTestDB()
-	router := setupPacketRouter(db)
+	connManager := services.NewTCPConnectionManager()
+	router := setupPacketRouter(db, connManager)
 
 	server := models.TCPServer{Name: "test", Host: "127.0.0.1", Port: 1234}
 	db.Create(&server)
