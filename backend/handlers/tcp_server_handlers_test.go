@@ -15,7 +15,8 @@ import (
 func setupTCPServerRouter(db *gorm.DB, mgr *services.TCPConnectionManager) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	handler := NewTCPServerHandler(db, mgr)
+	hub := services.NewWebSocketHub()
+	handler := NewTCPServerHandler(db, mgr, hub)
 	router.POST("/tcp", handler.CreateTCPServer)
 	return router
 }

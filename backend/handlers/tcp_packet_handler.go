@@ -105,17 +105,27 @@ func (h *TCPPacketHandler) UpdateTCPPacketInfo(c *gin.Context) {
 		return
 	}
 
-	var packet = &models.TCPPacket{}
+	var packet models.TCPPacket
+	if err := h.DB.First(&packet, packetID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "패킷을 찾을 수 없습니다"})
+		return
+	}
 
-	result := h.DB.Find(packet).Where("id != ? and name = ? AND deleted_at IS NULL", packetID, updatedPacket.Name)
-	if packet != nil || result.Error == nil {
+	var count int64
+	h.DB.Model(&models.TCPPacket{}).
+		Where("id <> ? and name = ? AND deleted_at IS NULL", packetID, updatedPacket.Name).
+		Count(&count)
+	if count > 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "패킷 이름을 변경할 수 없습니다."})
 		return
 	}
-	h.DB.Find(packet, packet.ID).Updates(updatedPacket)
-	result = h.DB.Save(packet)
-	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "패킷 업데이트 실패: " + result.Error.Error()})
+
+	packet.Name = updatedPacket.Name
+	packet.Desc = updatedPacket.Desc
+	packet.UseCRC = updatedPacket.UseCRC
+
+	if err := h.DB.Save(&packet).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "패킷 업데이트 실패: " + err.Error()})
 		return
 	}
 

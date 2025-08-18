@@ -3,10 +3,12 @@ package services
 import (
 	"encoding/hex"
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
 	"github.com/fake-edge-server/models"
+	"github.com/fake-edge-server/utils"
 	"gorm.io/gorm"
 )
 
@@ -80,9 +82,20 @@ func (p *PacketSender) SendOnce(server models.TCPServer, packet models.TCPPacket
 func (p *PacketSender) sendOnce(server models.TCPServer, packet models.TCPPacket, data []byte) (*models.TCPPacketHistory, error) {
 	conn := p.connManager.GetConn(server.ID)
 	if conn == nil {
-		return nil, fmt.Errorf("TCP 연결 실패: 연결이 없습니다")
+		addr := fmt.Sprintf("%s:%d", server.Host, server.Port)
+		var err error
+		conn, err = net.Dial("tcp", addr)
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
 	}
-	if _, err := conn.Write(data); err != nil {
+
+	sendData := data
+	if packet.UseCRC {
+		sendData = utils.BuildPacket(data)
+	}
+	if _, err := conn.Write(sendData); err != nil {
 		return nil, err
 	}
 	buf := make([]byte, 4096)
@@ -90,7 +103,16 @@ func (p *PacketSender) sendOnce(server models.TCPServer, packet models.TCPPacket
 	if err != nil {
 		return nil, err
 	}
-	response := buf[:n]
+	responseData := buf[:n]
+	var response []byte
+	if packet.UseCRC {
+		response, err = utils.UnpackPacket(responseData)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		response = responseData
+	}
 	reqHex := hex.EncodeToString(data)
 	respHex := hex.EncodeToString(response)
 	history := models.TCPPacketHistory{

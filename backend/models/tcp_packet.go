@@ -91,6 +91,7 @@ type TCPPacket struct {
 	Data        PacketData     `json:"data" gorm:"type:text"`
 	Name        string         `json:"name" gorm:"uniqueIndex"`
 	Desc        string         `json:"desc"`
+	UseCRC      bool           `json:"use_crc"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `json:"deleted_at" gorm:"index"`
