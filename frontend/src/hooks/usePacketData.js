@@ -20,6 +20,7 @@ const usePacketData = (currentTCP) => {
   const [openDialog, setOpenDialog] = useState(false);
   const [packetName, setPacketName] = useState("");
   const [packetDesc, setPacketDesc] = useState("");
+  const [useCRC, setUseCRC] = useState(false);
   const [contextMenu, setContextMenu] = useState(null);
   const [selectedRows, setSelectedRows] = useState([]);
   const [openTypeDialog, setOpenTypeDialog] = useState(false);
@@ -115,6 +116,7 @@ const usePacketData = (currentTCP) => {
         setSelectedPacket(data[0]);
         setPacketData(data[0].data || []);
         setPacketDesc(data[0].desc || "");
+        setUseCRC(data[0].use_crc || false);
       }
       await loadHistory(data);
       console.log("로드된 패킷:", data);
@@ -186,6 +188,7 @@ const usePacketData = (currentTCP) => {
     setSelectedPacket(packet);
     setPacketData(packet.data || []);
     setPacketDesc(packet.desc || "");
+    setUseCRC(packet.use_crc || false);
   };
 
   // 새 패킷 생성 대화상자 열기
@@ -193,6 +196,7 @@ const usePacketData = (currentTCP) => {
     setSelectedPacket(null);
     setPacketData([]);
     setPacketDesc("");
+    setUseCRC(false);
     setOpenDialog(true);
   };
 
@@ -206,6 +210,7 @@ const usePacketData = (currentTCP) => {
         tcp_server_id: currentTCP.id,
         name: packetName,
         desc: packetDesc,
+        use_crc: useCRC,
       };
 
       await createTCPPacket(currentTCP.id, packetToSave);
@@ -236,6 +241,7 @@ const usePacketData = (currentTCP) => {
         tcp_server_id: currentTCP.id,
         name: packetName,
         desc: packetDesc,
+        use_crc: useCRC,
       };
 
       await updateTCPPacketInfo(currentTCP.id, selectedPacket.id, packetToSave);
@@ -795,6 +801,7 @@ const usePacketData = (currentTCP) => {
     openDialog,
     packetName,
     packetDesc,
+    useCRC,
     contextMenu,
     selectedRows,
     openTypeDialog,
@@ -808,6 +815,7 @@ const usePacketData = (currentTCP) => {
     isSending,
     setPacketName,
     setPacketDesc,
+    setUseCRC,
     setMsgIdOffset,
     setOpenDialog,
     setOpenTypeDialog,

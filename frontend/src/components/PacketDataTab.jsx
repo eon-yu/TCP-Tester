@@ -36,6 +36,7 @@ const PacketDataTab = ({ currentTCP }) => {
     openDialog,
     packetName,
     packetDesc,
+    useCRC,
     contextMenu,
     selectedRows,
     openTypeDialog,
@@ -49,6 +50,7 @@ const PacketDataTab = ({ currentTCP }) => {
     isSending,
     setPacketName,
     setPacketDesc,
+    setUseCRC,
     setMsgIdOffset,
     setOpenDialog,
     setOpenTypeDialog,
@@ -243,8 +245,10 @@ const PacketDataTab = ({ currentTCP }) => {
         loading={loading}
         packetName={packetName}
         packetDesc={packetDesc}
+        useCRC={useCRC}
         setPacketName={setPacketName}
         setPacketDesc={setPacketDesc}
+        setUseCRC={setUseCRC}
         selectedPacket={selectedPacket}
         onSave={selectedPacket ? handleUpdatePacketInfo : handleCreatePacket}
         onClose={() => setOpenDialog(false)}
