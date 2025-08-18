@@ -38,6 +38,7 @@ const usePacketData = (currentTCP) => {
   const [currentMsgId, setCurrentMsgId] = useState([]);
   const [responseHistory, setResponseHistory] = useState([]);
   const [intervalMs, setIntervalMs] = useState(1000);
+  const [sendCount, setSendCount] = useState(1);
   const [isSending, setIsSending] = useState(false);
 
   const bytesToHex = (bytes) =>
@@ -280,6 +281,33 @@ const usePacketData = (currentTCP) => {
     } catch (error) {
       console.error("패킷 삭제 실패:", error);
       showAlert("패킷 삭제 실패: " + error.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCRCChange = async (checked) => {
+    if (!selectedPacket) {
+      setUseCRC(checked);
+      return;
+    }
+    try {
+      setLoading(true);
+      setUseCRC(checked);
+      await updateTCPPacketInfo(currentTCP.id, selectedPacket.id, {
+        name: selectedPacket.name,
+        desc: selectedPacket.desc,
+        use_crc: checked,
+      });
+      setSelectedPacket({ ...selectedPacket, use_crc: checked });
+      setPackets((prev) =>
+        prev.map((p) =>
+          p.id === selectedPacket.id ? { ...p, use_crc: checked } : p,
+        ),
+      );
+    } catch (error) {
+      console.error("CRC 설정 실패:", error);
+      showAlert("CRC 설정 실패: " + error.message, "error");
     } finally {
       setLoading(false);
     }
@@ -759,14 +787,24 @@ const usePacketData = (currentTCP) => {
     if (!selectedPacket) return;
     try {
       setLoading(true);
-      if (!isSending) {
-        await sendTCPPacket(currentTCP.id, selectedPacket.id, intervalMs);
-        setIsSending(true);
-        showAlert("패킷 전송을 시작합니다", "success");
+      if (sendCount === 0) {
+        if (!isSending) {
+          await sendTCPPacket(currentTCP.id, selectedPacket.id, intervalMs);
+          setIsSending(true);
+          showAlert("패킷 전송을 시작합니다", "success");
+        } else {
+          await stopTCPPacket(currentTCP.id, selectedPacket.id);
+          setIsSending(false);
+          showAlert("패킷 전송을 중지합니다", "info");
+        }
       } else {
-        await stopTCPPacket(currentTCP.id, selectedPacket.id);
-        setIsSending(false);
-        showAlert("패킷 전송을 중지합니다", "info");
+        for (let i = 0; i < sendCount; i++) {
+          await sendTCPPacket(currentTCP.id, selectedPacket.id);
+          if (intervalMs > 0 && i < sendCount - 1) {
+            await new Promise((res) => setTimeout(res, intervalMs));
+          }
+        }
+        showAlert(`패킷을 ${sendCount}회 전송했습니다`, "success");
       }
     } catch (error) {
       console.error("패킷 전송 실패:", error);
@@ -813,9 +851,10 @@ const usePacketData = (currentTCP) => {
     responseHistory,
     intervalMs,
     isSending,
+    sendCount,
     setPacketName,
     setPacketDesc,
-    setUseCRC,
+    handleCRCChange,
     setMsgIdOffset,
     setOpenDialog,
     setOpenTypeDialog,
@@ -850,6 +889,7 @@ const usePacketData = (currentTCP) => {
     autoSave,
     bytesToHex,
     setIntervalMs,
+    setSendCount,
   };
 };
 
