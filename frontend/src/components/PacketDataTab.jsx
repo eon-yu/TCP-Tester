@@ -1,31 +1,31 @@
-import React from 'react';
+import React from "react";
 import {
-    Alert,
-    Box,
-    Button,
-    ListItemIcon,
-    ListItemText,
-    Menu,
-    MenuItem,
-    Snackbar,
-    TextField,
-    Typography
-} from '@mui/material';
+  Alert,
+  Box,
+  Button,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  Snackbar,
+  TextField,
+  Typography,
+} from "@mui/material";
 import {
-    Add as AddIcon,
-    Delete as DeleteIcon,
-    Link as LinkIcon,
-    LinkOff as LinkOffIcon,
-    Refresh as RefreshIcon,
-    Save as SaveIcon,
-    Send as SendIcon
-} from '@mui/icons-material';
-import PacketDataTable from './packet/PacketDataTable';
-import PacketFormDialog from './packet/PacketFormDialog';
-import TypeSelectDialog from './packet/TypeSelectDialog';
-import ConfirmUnchainDialog from './packet/ConfirmUnchainDialog';
-import ResponseHistoryPanel from './packet/ResponseHistoryPanel';
-import usePacketData from '../hooks/usePacketData';
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  Link as LinkIcon,
+  LinkOff as LinkOffIcon,
+  Refresh as RefreshIcon,
+  Save as SaveIcon,
+  Send as SendIcon,
+} from "@mui/icons-material";
+import PacketDataTable from "./packet/PacketDataTable";
+import PacketFormDialog from "./packet/PacketFormDialog";
+import TypeSelectDialog from "./packet/TypeSelectDialog";
+import ConfirmUnchainDialog from "./packet/ConfirmUnchainDialog";
+import ResponseHistoryPanel from "./packet/ResponseHistoryPanel";
+import usePacketData from "../hooks/usePacketData";
 
 const PacketDataTab = ({ currentTCP }) => {
   const {
@@ -45,6 +45,8 @@ const PacketDataTab = ({ currentTCP }) => {
     msgIdOffset,
     currentMsgId,
     responseHistory,
+    intervalMs,
+    isSending,
     setPacketName,
     setPacketDesc,
     setMsgIdOffset,
@@ -79,11 +81,19 @@ const PacketDataTab = ({ currentTCP }) => {
     showAlert,
     handleCloseAlert,
     autoSave,
-    bytesToHex
+    bytesToHex,
+    setIntervalMs,
   } = usePacketData(currentTCP);
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 2,
+        }}
+      >
         <Typography variant="h6">패킷 데이터</Typography>
         <Box>
           <Button
@@ -108,31 +118,46 @@ const PacketDataTab = ({ currentTCP }) => {
 
       {/* 패킷 선택 영역 */}
       {packets.length > 0 ? (
-        <Box sx={{ mb: 2, display: 'flex', overflowX: 'auto' }}>
-          {packets.map(packet => (
+        <Box sx={{ mb: 2, display: "flex", overflowX: "auto" }}>
+          {packets.map((packet) => (
             <Button
               key={packet.id}
-              variant={selectedPacket && selectedPacket.id === packet.id ? "contained" : "outlined"}
+              variant={
+                selectedPacket && selectedPacket.id === packet.id
+                  ? "contained"
+                  : "outlined"
+              }
               size="small"
               onClick={() => handleSelectPacket(packet)}
-              sx={{ mr: 1, mb: 1, whiteSpace: 'nowrap' }}
+              sx={{ mr: 1, mb: 1, whiteSpace: "nowrap" }}
             >
               {packet.name || `패킷 ${packet.id}`}
             </Button>
           ))}
         </Box>
       ) : (
-        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', my: 2 }}>
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ textAlign: "center", my: 2 }}
+        >
           저장된 패킷이 없습니다. '새 패킷' 버튼을 클릭하여 패킷을 생성하세요.
         </Typography>
       )}
 
       {selectedPacket && (
-        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box
+          sx={{
+            mb: 2,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <Typography variant="subtitle1">
             {selectedPacket.desc || `패킷 ${selectedPacket.id}`}
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box sx={{ display: "flex", alignItems: "center" }}>
             <TextField
               type="number"
               label="MsgID 위치"
@@ -171,14 +196,23 @@ const PacketDataTab = ({ currentTCP }) => {
             >
               삭제
             </Button>
+            <TextField
+              type="number"
+              label="Interval(ms)"
+              size="small"
+              value={intervalMs}
+              onChange={(e) => setIntervalMs(parseInt(e.target.value) || 0)}
+              sx={{ width: 120, mr: 1 }}
+              disabled={isSending}
+            />
             <Button
-              color="success"
+              color={isSending ? "error" : "success"}
               variant="contained"
               startIcon={<SendIcon />}
               onClick={handleSendPacket}
               disabled={loading || packetData.length === 0}
             >
-              전송
+              {isSending ? "중지" : "전송"}
             </Button>
           </Box>
         </Box>
@@ -243,28 +277,34 @@ const PacketDataTab = ({ currentTCP }) => {
             : undefined
         }
       >
-        <MenuItem onClick={() => {
-          setOpenTypeDialog(true);
-          handleCloseContextMenu();
-        }}>
+        <MenuItem
+          onClick={() => {
+            setOpenTypeDialog(true);
+            handleCloseContextMenu();
+          }}
+        >
           <ListItemIcon>
             <LinkIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText>타입 설정</ListItemText>
         </MenuItem>
-        <MenuItem onClick={() => {
-          const chain = getChainedItems(contextMenu.offset);
-          if (chain.length > 0) {
-            const offsets = chain.map(ci => ci.offset);
-            const updated = packetData.map(item => (
-              offsets.includes(item.offset) ? { ...item, is_chained: false, type: 0 } : item
-            ));
-            setPacketData(updated);
-            autoSave(updated);
-            showAlert('체인이 해제되었습니다', 'success');
-          }
-          handleCloseContextMenu();
-        }}>
+        <MenuItem
+          onClick={() => {
+            const chain = getChainedItems(contextMenu.offset);
+            if (chain.length > 0) {
+              const offsets = chain.map((ci) => ci.offset);
+              const updated = packetData.map((item) =>
+                offsets.includes(item.offset)
+                  ? { ...item, is_chained: false, type: 0 }
+                  : item,
+              );
+              setPacketData(updated);
+              autoSave(updated);
+              showAlert("체인이 해제되었습니다", "success");
+            }
+            handleCloseContextMenu();
+          }}
+        >
           <ListItemIcon>
             <LinkOffIcon fontSize="small" />
           </ListItemIcon>
@@ -277,16 +317,18 @@ const PacketDataTab = ({ currentTCP }) => {
         open={alertInfo.open}
         autoHideDuration={4000}
         onClose={handleCloseAlert}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
-        <Alert onClose={handleCloseAlert} severity={alertInfo.severity} sx={{ width: '100%' }}>
+        <Alert
+          onClose={handleCloseAlert}
+          severity={alertInfo.severity}
+          sx={{ width: "100%" }}
+        >
           {alertInfo.message}
         </Alert>
       </Snackbar>
-
     </Box>
   );
 };
 
 export default PacketDataTab;
-

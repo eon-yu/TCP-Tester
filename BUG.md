@@ -6,3 +6,4 @@
 ## 추가 확인 필요
 - 일부 API 응답이 비어 있을 때 `fetchWithErrorHandling`에서 `response.json()` 호출이 실패할 수 있음
 - 프론트엔드 `checkTCPStatus` 함수가 오류 응답을 세부적으로 처리하지 않음
+- WebSocket 연결이 끊어졌을 때 자동으로 재연결되지 않음

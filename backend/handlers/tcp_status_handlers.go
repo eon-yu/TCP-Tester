@@ -42,6 +42,8 @@ func (h *TCPServerHandler) StartTCPServer(c *gin.Context) {
 		return
 	}
 
+	h.Hub.Broadcast(gin.H{"type": "status", "server_id": server.ID, "status": "Alive"})
+	h.Hub.Broadcast(gin.H{"type": "log", "message": "server started", "server_id": server.ID})
 	c.JSON(http.StatusOK, gin.H{
 		"id":      server.ID,
 		"name":    server.Name,
@@ -57,7 +59,8 @@ func (h *TCPServerHandler) StopTCPServer(c *gin.Context) {
 		return
 	}
 	h.ConnManager.Disconnect(server.ID)
-
+	h.Hub.Broadcast(gin.H{"type": "status", "server_id": server.ID, "status": "Wait"})
+	h.Hub.Broadcast(gin.H{"type": "log", "message": "server stopped", "server_id": server.ID})
 	c.JSON(http.StatusOK, gin.H{
 		"id":      server.ID,
 		"name":    server.Name,
@@ -120,7 +123,8 @@ func (h *TCPServerHandler) KillTCPServer(c *gin.Context) {
 	}
 
 	h.ConnManager.MarkDead(server.ID)
-
+	h.Hub.Broadcast(gin.H{"type": "status", "server_id": server.ID, "status": "Dead"})
+	h.Hub.Broadcast(gin.H{"type": "log", "message": "server killed", "server_id": server.ID})
 	c.JSON(http.StatusOK, gin.H{
 		"id":      server.ID,
 		"name":    server.Name,
