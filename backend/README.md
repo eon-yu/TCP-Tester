@@ -4,6 +4,13 @@ Go 기반의 REST API 서버로 TCP 서버와의 통신을 담당합니다.
 
 ![API Flow](https://via.placeholder.com/500x120.png?text=API+Flow)
 
+## 완료된 작업 요약
+
+- TCP 서버 CRUD 및 상태 관리 API 구현
+- 패킷 생성/수정/전송 기능과 이력 저장
+- 프록시 요청 처리와 요청/응답 로깅
+- 라우트 파라미터 오류 수정 및 설정/DB 초기화 테스트 코드 추가
+
 ## API 리스트
 
 | Method | Endpoint | 설명 |
