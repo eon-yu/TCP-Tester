@@ -277,13 +277,13 @@ func (h *TCPPacketHandler) SendTCPPacket(c *gin.Context) {
 		return
 	}
 
-	err := h.Sender.SendOnce(server, packet)
+	history, err := h.Sender.SendOnce(server, packet)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "ok"})
+	c.JSON(http.StatusOK, history)
 }
 
 // StopTCPPacketSend stops the background sending job for a packet.

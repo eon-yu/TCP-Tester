@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"time"
 )
 
 // TCPConnectionManager manages persistent TCP connections keyed by ID.
@@ -49,6 +50,7 @@ func (m *TCPConnectionManager) Connect(id uint, host string, port int) error {
 func (m *TCPConnectionManager) monitor(id uint, conn net.Conn) {
 	buf := make([]byte, 1)
 	for {
+		time.Sleep(10 * time.Millisecond)
 		_, err := conn.Read(buf)
 		if err != nil {
 			m.mu.Lock()

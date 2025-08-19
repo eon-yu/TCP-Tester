@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/hex"
 	"fmt"
+	"io"
 	"log"
 	"sync"
 	"time"
@@ -54,7 +55,9 @@ func (p *PacketSender) Start(server models.TCPServer, packet models.TCPPacket, i
 		for {
 			select {
 			case <-ticker.C:
-				p.sendOnce(server, packet, data)
+				if _, err := p.sendOnce(server, packet, data); err != nil {
+					log.Print(err)
+				}
 			case <-stop:
 				return
 			}
@@ -74,17 +77,17 @@ func (p *PacketSender) Stop(serverID, packetID uint) {
 }
 
 // SendOnce sends the packet a single time and stores the history.
-func (p *PacketSender) SendOnce(server models.TCPServer, packet models.TCPPacket) error {
+func (p *PacketSender) SendOnce(server models.TCPServer, packet models.TCPPacket) (*models.TCPPacketHistory, error) {
 	data := packetDataToBytes(packet.Data)
 	return p.sendOnce(server, packet, data)
 }
 
-func (p *PacketSender) sendOnce(server models.TCPServer, packet models.TCPPacket, data []byte) error {
+func (p *PacketSender) sendOnce(server models.TCPServer, packet models.TCPPacket, data []byte) (*models.TCPPacketHistory, error) {
 	conn := p.connManager.GetConn(server.ID)
 	if conn == nil {
 		err := p.connManager.Connect(server.ID, server.Host, server.Port)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		conn = p.connManager.GetConn(server.ID)
 	}
@@ -94,56 +97,53 @@ func (p *PacketSender) sendOnce(server models.TCPServer, packet models.TCPPacket
 		sendData = utils.BuildPacket(data)
 	}
 	if _, err := conn.Write(sendData); err != nil {
-		return err
+		return nil, err
 	}
 
+	timeout := 5 * time.Second
+	conn.SetReadDeadline(time.Now().Add(timeout))
 	buf := make([]byte, 4096)
-	go func() {
-		for {
-			n, err := conn.Read(buf)
-			if err != nil {
-				log.Print(err)
-				return
-			}
-			responseData := buf[:n]
-			var response []byte
-			if packet.UseCRC {
-				response, err = utils.UnpackPacket(responseData)
-				if err != nil {
-					log.Print(err)
-					return
-				}
-			} else {
-				response = responseData
-			}
-			reqHex := hex.EncodeToString(data)
-			respHex := hex.EncodeToString(response)
-			history := models.TCPPacketHistory{
-				TCPServerID: server.ID,
-				TCPPacketID: packet.ID,
-				PacketName:  packet.Name,
-				PacketDesc:  packet.Desc,
-				Request:     reqHex,
-				Response:    respHex,
-			}
-			if err := p.db.Create(&history).Error; err != nil {
-				log.Fatal(err)
-			}
-			// broadcast response via websocket
-			p.hub.Broadcast(map[string]interface{}{
-				"type":        "response",
-				"server_id":   server.ID,
-				"packet_id":   packet.ID,
-				"packet_name": packet.Name,
-				"packet_desc": packet.Desc,
-				"request":     reqHex,
-				"response":    respHex,
-			})
-			log.Printf("Success to send Server[%d] packet %d", packet.TCPServerID, packet.ID)
-			return
+	n, err := conn.Read(buf)
+	conn.SetReadDeadline(time.Time{})
+	if err != nil && err != io.EOF {
+		log.Print(err)
+		return nil, err
+	}
+
+	responseData := buf[:n]
+	var response []byte
+	if packet.UseCRC {
+		response, err = utils.UnpackPacket(responseData)
+		if err != nil {
+			return nil, err
 		}
-	}()
-	return nil
+	} else {
+		response = responseData
+	}
+	reqHex := hex.EncodeToString(data)
+	respHex := hex.EncodeToString(response)
+	history := models.TCPPacketHistory{
+		TCPServerID: server.ID,
+		TCPPacketID: packet.ID,
+		PacketName:  packet.Name,
+		PacketDesc:  packet.Desc,
+		Request:     reqHex,
+		Response:    respHex,
+	}
+	if err := p.db.Create(&history).Error; err != nil {
+		return nil, err
+	}
+	p.hub.Broadcast(map[string]interface{}{
+		"type":        "response",
+		"server_id":   server.ID,
+		"packet_id":   packet.ID,
+		"packet_name": packet.Name,
+		"packet_desc": packet.Desc,
+		"request":     reqHex,
+		"response":    respHex,
+	})
+	log.Printf("Success to send Server[%d] packet %d", packet.TCPServerID, packet.ID)
+	return &history, nil
 }
 
 // packetDataToBytes converts packet data to a byte slice.
