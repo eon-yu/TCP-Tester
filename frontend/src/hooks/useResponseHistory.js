@@ -30,6 +30,7 @@ const useResponseHistory = (currentTCP, msgIdOffset = 0) => {
           packetId: h.tcp_packet_id,
           packetName: h.packet_name || `패킷 ${h.tcp_packet_id}`,
           messageId,
+          // 프레임 기반 뷰어를 위해 요청과 응답을 오프셋 배열로 구성
           requestData: reqBytes.map((v, i) => ({ offset: i, value: v })),
           responseData: respBytes.map((v, i) => ({ offset: i, value: v })),
           valid,
@@ -55,6 +56,8 @@ const useResponseHistory = (currentTCP, msgIdOffset = 0) => {
         if (msg.type === "response") {
           const reqBytes = hexToBytes(msg.request || "");
           const respBytes = hexToBytes(msg.response || "");
+          // 요청/응답 바이트 배열을 FrameViewer에서 사용할 수 있는
+          // 오프셋-값 쌍의 프레임 형태로 변환한다.
           const requestFrame = reqBytes.map((v, i) => ({ offset: i, value: v }));
           const responseFrame = respBytes.map((v, i) => ({ offset: i, value: v }));
           const msgId = reqBytes.slice(msgIdOffset, msgIdOffset + 8);

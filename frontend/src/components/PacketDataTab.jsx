@@ -82,7 +82,6 @@ const PacketDataTab = ({ currentTCP }) => {
     handleDeleteRow,
     toggleRowSelection,
     handleContextMenu,
-    handleGenerateMessageId,
     handleSendPacket,
     handleCloseContextMenu,
     handleUnchainRows,
@@ -93,6 +92,8 @@ const PacketDataTab = ({ currentTCP }) => {
     bytesToHex,
     setIntervalMs,
     setSendCount,
+    autoMsgId,
+    setAutoMsgId,
   } = usePacketData(currentTCP);
   const { responseHistory } = useResponseHistory(currentTCP, msgIdOffset);
   const fileInputRef = useRef(null);
@@ -240,13 +241,17 @@ const PacketDataTab = ({ currentTCP }) => {
               onChange={(e) => setMsgIdOffset(parseInt(e.target.value) || 0)}
               sx={{ width: 100, mr: 1 }}
             />
-            <Button
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={autoMsgId}
+                  onChange={(e) => setAutoMsgId(e.target.checked)}
+                  disabled={loading}
+                />
+              }
+              label="MsgID 자동 생성"
               sx={{ mr: 1 }}
-              onClick={handleGenerateMessageId}
-              disabled={loading}
-            >
-              Message ID 생성
-            </Button>
+            />
             {currentMsgId.length === 8 && (
               <Typography variant="caption" sx={{ mr: 1 }}>
                 {bytesToHex(currentMsgId)}

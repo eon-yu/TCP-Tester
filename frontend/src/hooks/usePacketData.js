@@ -35,6 +35,7 @@ const usePacketData = (currentTCP) => {
   });
   const [msgIdOffset, setMsgIdOffset] = useState(0);
   const [currentMsgId, setCurrentMsgId] = useState([]);
+  const [autoMsgId, setAutoMsgId] = useState(false);
   const [intervalMs, setIntervalMs] = useState(1000);
   const [sendCount, setSendCount] = useState(1);
   const [isSending, setIsSending] = useState(false);
@@ -46,7 +47,7 @@ const usePacketData = (currentTCP) => {
   const hexToBytes = (hex) =>
     (hex.match(/.{1,2}/g) || []).map((b) => parseInt(b, 16));
 
-  const handleGenerateMessageId = () => {
+  const handleGenerateMessageId = async (silent = false) => {
     const id = crypto.getRandomValues(new Uint8Array(8));
     const updated = [...packetData];
     for (let i = 0; i < 8; i++) {
@@ -66,8 +67,11 @@ const usePacketData = (currentTCP) => {
     }
     setPacketData(updated);
     setCurrentMsgId(Array.from(id));
-    autoSave(updated);
-    showAlert("Message ID가 생성되었습니다", "success");
+    await autoSave(updated);
+    if (!silent) {
+      showAlert("Message ID가 생성되었습니다", "success");
+    }
+    return id;
   };
 
   // 패킷 데이터 로드
@@ -823,6 +827,9 @@ const usePacketData = (currentTCP) => {
       setLoading(true);
       if (sendCount === 0) {
         if (!isSending) {
+          if (autoMsgId) {
+            await handleGenerateMessageId(true);
+          }
           await sendTCPPacket(currentTCP.id, selectedPacket.id, intervalMs);
           setIsSending(true);
           showAlert("패킷 전송을 시작합니다", "success");
@@ -833,6 +840,9 @@ const usePacketData = (currentTCP) => {
         }
       } else {
         for (let i = 0; i < sendCount; i++) {
+          if (autoMsgId) {
+            await handleGenerateMessageId(true);
+          }
           await sendTCPPacket(currentTCP.id, selectedPacket.id);
           if (intervalMs > 0 && i < sendCount - 1) {
             await new Promise((res) => setTimeout(res, intervalMs));
@@ -914,7 +924,6 @@ const usePacketData = (currentTCP) => {
     handleDeleteRow,
     toggleRowSelection,
     handleContextMenu,
-    handleGenerateMessageId,
     handleSendPacket,
     handleCloseContextMenu,
     showAlert,
@@ -923,6 +932,8 @@ const usePacketData = (currentTCP) => {
     bytesToHex,
     setIntervalMs,
     setSendCount,
+    autoMsgId,
+    setAutoMsgId,
   };
 };
 
