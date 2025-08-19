@@ -95,3 +95,20 @@ export async function stopTCPPacket(tcpId, packetId) {
 export async function fetchTCPPacketHistory(tcpId) {
   return await fetchWithErrorHandling(`${API_BASE_URL}/tcp/${tcpId}/history`);
 }
+
+// TCP 패킷 EXPORT
+export async function exportTCPPackets(tcpId) {
+  return await fetchWithErrorHandling(`${API_BASE_URL}/tcp/${tcpId}/packets/export`);
+}
+
+// TCP 패킷 IMPORT
+export async function importTCPPackets(tcpId, packets) {
+  return await fetchWithErrorHandling(
+    `${API_BASE_URL}/tcp/${tcpId}/packets/import`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(packets),
+    },
+  );
+}

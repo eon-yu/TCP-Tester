@@ -25,10 +25,11 @@ const (
 	TypeFloat64
 	TypeString
 	TypeHex
+	TypeJSON
 )
 
 // Size는 각 데이터 타입이 차지하는 바이트 수를 반환합니다.
-// 문자열과 HEX 타입은 가변 길이이므로 0을 반환합니다.
+// 문자열, HEX, JSON 타입은 가변 길이이므로 0을 반환합니다.
 func (dt DataType) Size() int {
 	switch dt {
 	case TypeInt8, TypeUint8:

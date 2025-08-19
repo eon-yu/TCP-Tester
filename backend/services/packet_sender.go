@@ -120,6 +120,8 @@ func (p *PacketSender) sendOnce(server models.TCPServer, packet models.TCPPacket
 		history := models.TCPPacketHistory{
 			TCPServerID: server.ID,
 			TCPPacketID: packet.ID,
+			PacketName:  packet.Name,
+			PacketDesc:  packet.Desc,
 			Request:     reqHex,
 			Response:    respHex,
 		}
@@ -128,11 +130,13 @@ func (p *PacketSender) sendOnce(server models.TCPServer, packet models.TCPPacket
 		}
 		// broadcast response via websocket
 		p.hub.Broadcast(map[string]interface{}{
-			"type":      "response",
-			"server_id": server.ID,
-			"packet_id": packet.ID,
-			"request":   reqHex,
-			"response":  respHex,
+			"type":        "response",
+			"server_id":   server.ID,
+			"packet_id":   packet.ID,
+			"packet_name": packet.Name,
+			"packet_desc": packet.Desc,
+			"request":     reqHex,
+			"response":    respHex,
 		})
 		return &history, nil
 	}

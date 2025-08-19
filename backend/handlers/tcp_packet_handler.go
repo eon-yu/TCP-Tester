@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sort"
@@ -81,6 +82,47 @@ func (h *TCPPacketHandler) GetTCPPackets(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, packets)
+}
+
+// ExportTCPPackets는 패킷 목록을 내보냅니다.
+func (h *TCPPacketHandler) ExportTCPPackets(c *gin.Context) {
+	serverID := c.Param("id")
+
+	var packets []models.TCPPacket
+	if err := h.DB.Where("tcp_server_id = ?", serverID).Find(&packets).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "패킷 조회 실패: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, packets)
+}
+
+// ImportTCPPackets는 패킷 목록을 불러옵니다.
+func (h *TCPPacketHandler) ImportTCPPackets(c *gin.Context) {
+	serverID := c.Param("id")
+	var packets []models.TCPPacket
+	if err := c.ShouldBindJSON(&packets); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "잘못된 요청 형식: " + err.Error()})
+		return
+	}
+	sid, err := strconv.Atoi(serverID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "유효하지 않은 서버 ID: " + err.Error()})
+		return
+	}
+	for i := range packets {
+		packets[i].ID = 0
+		packets[i].TCPServerID = uint(sid)
+		if err := validatePacketData(packets[i].Data); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if err := h.DB.Create(&packets[i]).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "패킷 생성 실패: " + err.Error()})
+			return
+		}
+		h.Hub.Broadcast(gin.H{"type": "packet_update", "packet": packets[i]})
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "패킷이 성공적으로 가져왔습니다"})
 }
 
 // GetTCPPacketByID는 특정 TCP 패킷을 ID로 조회합니다.
@@ -370,6 +412,17 @@ func ParseChainedValues(dataType models.DataType, values []byte) (string, error)
 
 	case models.TypeHex:
 		return hex.EncodeToString(values), nil
+
+	case models.TypeJSON:
+		var v interface{}
+		if err := json.Unmarshal(values, &v); err != nil {
+			return "", fmt.Errorf("Json으로 호환되는 응답이 아닙니다.")
+		}
+		parsed, err := json.MarshalIndent(v, "", "  ")
+		if err != nil {
+			return "", err
+		}
+		return string(parsed), nil
 
 	default:
 		return "", fmt.Errorf("지원되지 않는 데이터 타입: %d", dataType)

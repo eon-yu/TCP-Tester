@@ -52,10 +52,6 @@ const usePacketData = (currentTCP) => {
     if (!currentTCP) return;
     try {
       const history = await fetchTCPPacketHistory(currentTCP.id);
-      const packetMap = (packetList || []).reduce((acc, p) => {
-        acc[p.id] = p.desc || `패킷 ${p.id}`;
-        return acc;
-      }, {});
       const mapped = history.map((h) => {
         const reqBytes = hexToBytes(h.request || "");
         const respBytes = hexToBytes(h.response || "");
@@ -67,7 +63,7 @@ const usePacketData = (currentTCP) => {
             .slice(msgIdOffset, msgIdOffset + 8)
             .every((b, i) => b === msgIdBytes[i]);
         return {
-          packetName: packetMap[h.tcp_packet_id] || `패킷 ${h.tcp_packet_id}`,
+          packetName: h.packet_name || `패킷 ${h.tcp_packet_id}`,
           messageId,
           requestData: reqBytes.map((v, i) => ({ offset: i, value: v })),
           responseData: respBytes.map((v, i) => ({ offset: i, value: v })),
@@ -163,7 +159,10 @@ const usePacketData = (currentTCP) => {
               .slice(msgIdOffset, msgIdOffset + 8)
               .every((b, i) => b === msgId[i]);
           const historyItem = {
-            packetName: selectedPacket?.desc || `패킷 ${msg.packet_id}`,
+            packetName:
+              msg.packet_name ||
+              selectedPacket?.desc ||
+              `패킷 ${msg.packet_id}`,
             messageId: bytesToHex(msgId),
             requestData: requestFrame,
             responseData: responseFrame,
@@ -333,6 +332,33 @@ const usePacketData = (currentTCP) => {
 
   // 행 삭제
   const handleDeleteRow = (offsetToDelete) => {
+    const target = packetData.find((item) => item.offset === offsetToDelete);
+    if (target && target.type === 12 && target.is_chained) {
+      const chain = getChainedItems(offsetToDelete);
+      if (chain.length > 0 && chain[0].offset !== offsetToDelete) {
+        showAlert("JSON 값은 시작 위치에서만 삭제 가능합니다", "warning");
+        return;
+      }
+      const length = chain.length;
+      const updated = packetData
+        .filter((item) => !chain.some((ci) => ci.offset === item.offset))
+        .map((item) =>
+          item.offset > offsetToDelete + length - 1
+            ? { ...item, offset: item.offset - length }
+            : item,
+        );
+      setPacketData(updated);
+      setSelectedRows((prev) =>
+        prev
+          .filter((row) => !chain.some((ci) => ci.offset === row))
+          .map((row) =>
+            row > offsetToDelete + length - 1 ? row - length : row,
+          ),
+      );
+      autoSave(updated);
+      return;
+    }
+
     const updated = packetData
       .filter((item) => item.offset !== offsetToDelete)
       .map((item) =>
@@ -540,10 +566,16 @@ const usePacketData = (currentTCP) => {
             }
             return str;
           }
-          case 11:
-            return bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
-          default:
+        case 11:
+          return bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
+        case 12:
+          try {
+            return new TextDecoder().decode(new Uint8Array(bytes));
+          } catch {
             return "";
+          }
+        default:
+          return "";
         }
       }
       return "";
@@ -554,6 +586,15 @@ const usePacketData = (currentTCP) => {
         return item.value ? String.fromCharCode(item.value) : "";
       case 11:
         return (item.value || 0).toString(16).padStart(2, "0");
+      case 12: {
+        const chain = getChainedItems(item.offset);
+        try {
+          const bytes = chain.map((ci) => ci.value);
+          return new TextDecoder().decode(new Uint8Array(bytes));
+        } catch {
+          return "";
+        }
+      }
       default:
         return (item.value ?? "").toString();
     }
@@ -561,6 +602,15 @@ const usePacketData = (currentTCP) => {
 
   // 각 오프셋별 표시 값
   const getDisplayValue = (item) => {
+    if (item.type === 12) {
+      const chain = getChainedItems(item.offset);
+      try {
+        const bytes = chain.map((ci) => ci.value);
+        return new TextDecoder().decode(new Uint8Array(bytes));
+      } catch {
+        return "";
+      }
+    }
     return item.value !== undefined ? item.value.toString() : "";
   };
 
@@ -692,6 +742,46 @@ const usePacketData = (currentTCP) => {
             view.setUint8(i, parseInt(byteStr || "0", 16));
           }
           break;
+        }
+        case 12: {
+          let obj;
+          try {
+            obj = JSON.parse(value || "");
+          } catch {
+            showAlert("Json으로 호환되는 응답이 아닙니다", "error");
+            return;
+          }
+          const jsonStr = JSON.stringify(obj);
+          const encoder = new TextEncoder();
+          const bytes = Array.from(encoder.encode(jsonStr));
+          const start = chain[0].offset;
+          const currentLen = chain.length;
+          const newLen = bytes.length;
+          let updated = packetData.filter(
+            (item) => !chain.some((ci) => ci.offset === item.offset),
+          );
+          const delta = newLen - currentLen;
+          updated = updated.map((item) =>
+            item.offset >= start + currentLen
+              ? { ...item, offset: item.offset + delta }
+              : item,
+          );
+          const newItems = bytes.map((b, i) => ({
+            offset: start + i,
+            value: b,
+            type: 12,
+            is_chained: true,
+            desc: "",
+          }));
+          updated = [...updated, ...newItems];
+          setPacketData(updated);
+          setSelectedRows((prev) =>
+            prev.map((row) =>
+              row >= start + currentLen ? row + delta : row,
+            ),
+          );
+          autoSave(updated);
+          return;
         }
         default:
           break;
