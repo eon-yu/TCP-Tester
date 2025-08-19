@@ -113,7 +113,7 @@ func (h *TCPPacketHandler) UpdateTCPPacketInfo(c *gin.Context) {
 
 	var count int64
 	h.DB.Model(&models.TCPPacket{}).
-		Where("id <> ? and name = ? AND deleted_at IS NULL", packetID, updatedPacket.Name).
+		Where("id != ? and name = ? AND deleted_at IS NULL", packetID, updatedPacket.Name).
 		Count(&count)
 	if count > 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "패킷 이름을 변경할 수 없습니다."})
