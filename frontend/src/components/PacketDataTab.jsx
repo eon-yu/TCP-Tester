@@ -31,6 +31,7 @@ import ConfirmUnchainDialog from "./packet/ConfirmUnchainDialog";
 import ResponseList from "./packet/ResponseList";
 import ResponseDialog from "./packet/ResponseDialog";
 import usePacketData from "../hooks/usePacketData";
+import useResponseHistory from "../hooks/useResponseHistory";
 import { exportTCPPackets, importTCPPackets } from "../api/packetApi";
 
 const PacketDataTab = ({ currentTCP }) => {
@@ -51,7 +52,6 @@ const PacketDataTab = ({ currentTCP }) => {
     confirmUnchain,
     msgIdOffset,
     currentMsgId,
-    responseHistory,
     intervalMs,
     isSending,
     sendCount,
@@ -94,6 +94,7 @@ const PacketDataTab = ({ currentTCP }) => {
     setIntervalMs,
     setSendCount,
   } = usePacketData(currentTCP);
+  const { responseHistory } = useResponseHistory(currentTCP, msgIdOffset);
   const fileInputRef = useRef(null);
   const [selectedResponse, setSelectedResponse] = useState(null);
 
@@ -329,7 +330,9 @@ const PacketDataTab = ({ currentTCP }) => {
       />
 
       <ResponseList
-        responses={responseHistory}
+        responses={responseHistory.filter(
+          (res) => res.packetId === selectedPacket?.id,
+        )}
         onSelect={(res) => setSelectedResponse(res)}
       />
       <ResponseDialog
