@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -21,13 +21,17 @@ import {
   Refresh as RefreshIcon,
   Save as SaveIcon,
   Send as SendIcon,
+  FileDownload as ExportIcon,
+  FileUpload as ImportIcon,
 } from "@mui/icons-material";
 import PacketDataTable from "./packet/PacketDataTable";
 import PacketFormDialog from "./packet/PacketFormDialog";
 import TypeSelectDialog from "./packet/TypeSelectDialog";
 import ConfirmUnchainDialog from "./packet/ConfirmUnchainDialog";
-import ResponseHistoryPanel from "./packet/ResponseHistoryPanel";
+import ResponseList from "./packet/ResponseList";
+import ResponseDialog from "./packet/ResponseDialog";
 import usePacketData from "../hooks/usePacketData";
+import { exportTCPPackets, importTCPPackets } from "../api/packetApi";
 
 const PacketDataTab = ({ currentTCP }) => {
   const {
@@ -90,6 +94,46 @@ const PacketDataTab = ({ currentTCP }) => {
     setIntervalMs,
     setSendCount,
   } = usePacketData(currentTCP);
+  const fileInputRef = useRef(null);
+  const [selectedResponse, setSelectedResponse] = useState(null);
+
+  const handleExport = async () => {
+    if (!currentTCP) return;
+    try {
+      const data = await exportTCPPackets(currentTCP.id);
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `tcp_${currentTCP.id}_packets.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      showAlert("EXPORT 실패: " + e.message, "error");
+    }
+  };
+
+  const handleImportFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !currentTCP) return;
+    try {
+      const text = await file.text();
+      const packets = JSON.parse(text);
+      await importTCPPackets(currentTCP.id, packets);
+      showAlert("IMPORT 완료", "success");
+      loadPackets();
+    } catch (err) {
+      showAlert("IMPORT 실패: " + err.message, "error");
+    } finally {
+      e.target.value = "";
+    }
+  };
+
+  const triggerImport = () => {
+    fileInputRef.current?.click();
+  };
   return (
     <Box>
       <Box
@@ -111,6 +155,22 @@ const PacketDataTab = ({ currentTCP }) => {
             새로고침
           </Button>
           <Button
+            startIcon={<ExportIcon />}
+            onClick={handleExport}
+            sx={{ mr: 1 }}
+            disabled={!currentTCP || loading}
+          >
+            EXPORT
+          </Button>
+          <Button
+            startIcon={<ImportIcon />}
+            onClick={triggerImport}
+            sx={{ mr: 1 }}
+            disabled={!currentTCP || loading}
+          >
+            IMPORT
+          </Button>
+          <Button
             variant="contained"
             color="primary"
             startIcon={<AddIcon />}
@@ -119,6 +179,13 @@ const PacketDataTab = ({ currentTCP }) => {
           >
             새 패킷
           </Button>
+          <input
+            type="file"
+            accept="application/json"
+            ref={fileInputRef}
+            style={{ display: "none" }}
+            onChange={handleImportFile}
+          />
         </Box>
       </Box>
 
@@ -261,7 +328,15 @@ const PacketDataTab = ({ currentTCP }) => {
         handleDeleteRow={handleDeleteRow}
       />
 
-      <ResponseHistoryPanel history={responseHistory} />
+      <ResponseList
+        responses={responseHistory}
+        onSelect={(res) => setSelectedResponse(res)}
+      />
+      <ResponseDialog
+        open={!!selectedResponse}
+        response={selectedResponse}
+        onClose={() => setSelectedResponse(null)}
+      />
 
       <PacketFormDialog
         open={openDialog}
