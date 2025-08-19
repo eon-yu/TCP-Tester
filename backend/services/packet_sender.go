@@ -98,41 +98,44 @@ func (p *PacketSender) sendOnce(server models.TCPServer, packet models.TCPPacket
 	if _, err := conn.Write(sendData); err != nil {
 		return nil, err
 	}
+
 	buf := make([]byte, 4096)
-	n, err := conn.Read(buf)
-	if err != nil {
-		return nil, err
-	}
-	responseData := buf[:n]
-	var response []byte
-	if packet.UseCRC {
-		response, err = utils.UnpackPacket(responseData)
+	for {
+		n, err := conn.Read(buf)
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		response = responseData
+		responseData := buf[:n]
+		var response []byte
+		if packet.UseCRC {
+			response, err = utils.UnpackPacket(responseData)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			response = responseData
+		}
+		reqHex := hex.EncodeToString(data)
+		respHex := hex.EncodeToString(response)
+		history := models.TCPPacketHistory{
+			TCPServerID: server.ID,
+			TCPPacketID: packet.ID,
+			Request:     reqHex,
+			Response:    respHex,
+		}
+		if err := p.db.Create(&history).Error; err != nil {
+			return nil, err
+		}
+		// broadcast response via websocket
+		p.hub.Broadcast(map[string]interface{}{
+			"type":      "response",
+			"server_id": server.ID,
+			"packet_id": packet.ID,
+			"request":   reqHex,
+			"response":  respHex,
+		})
+		return &history, nil
 	}
-	reqHex := hex.EncodeToString(data)
-	respHex := hex.EncodeToString(response)
-	history := models.TCPPacketHistory{
-		TCPServerID: server.ID,
-		TCPPacketID: packet.ID,
-		Request:     reqHex,
-		Response:    respHex,
-	}
-	if err := p.db.Create(&history).Error; err != nil {
-		return nil, err
-	}
-	// broadcast response via websocket
-	p.hub.Broadcast(map[string]interface{}{
-		"type":      "response",
-		"server_id": server.ID,
-		"packet_id": packet.ID,
-		"request":   reqHex,
-		"response":  respHex,
-	})
-	return &history, nil
 }
 
 // packetDataToBytes converts packet data to a byte slice.
