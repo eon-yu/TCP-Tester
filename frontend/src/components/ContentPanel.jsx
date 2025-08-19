@@ -3,7 +3,7 @@ import {Box, CircularProgress, Paper, Tab, Tabs, Typography} from '@mui/material
 import TCPRequestsTab from './TCPRequestsTab';
 import TCPLogsTab from './TCPLogsTab';
 import PacketDataTab from './PacketDataTab';
-import {fetchTCPLogs, fetchTCPRequests} from '../api/tcpApi';
+import {fetchTCPLogs} from '../api/tcpApi';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -28,7 +28,6 @@ function TabPanel(props) {
 const ContentPanel = ({ currentTCP }) => {
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [requests, setRequests] = useState([]);
   const [logs, setLogs] = useState([]);
 
   // 탭 변경 핸들러
@@ -49,11 +48,8 @@ const ContentPanel = ({ currentTCP }) => {
 
     setLoading(true);
     try {
-      // 선택된 탭에 따라 데이터 로드
-      if (tabValue === 0) {
-        const requestsData = await fetchTCPRequests(currentTCP.id);
-        setRequests(requestsData);
-      } else {
+      // 로그 탭에서만 데이터 로드
+      if (tabValue === 2) {
         const logsData = await fetchTCPLogs(currentTCP.id);
         setLogs(logsData);
       }
@@ -95,7 +91,7 @@ const ContentPanel = ({ currentTCP }) => {
             <PacketDataTab currentTCP={currentTCP} />
           </TabPanel>
           <TabPanel value={tabValue} index={1}>
-            <TCPRequestsTab requests={requests} onRefresh={loadData} />
+            <TCPRequestsTab currentTCP={currentTCP} />
           </TabPanel>
           <TabPanel value={tabValue} index={2}>
             <TCPLogsTab logs={logs} onRefresh={loadData} />

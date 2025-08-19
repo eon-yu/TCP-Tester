@@ -5,7 +5,6 @@ import {
   fetchTCPPackets,
   sendTCPPacket,
   stopTCPPacket,
-  fetchTCPPacketHistory,
   updateTCPPacketData,
   updateTCPPacketInfo,
 } from "../api/packetApi";
@@ -36,7 +35,7 @@ const usePacketData = (currentTCP) => {
   });
   const [msgIdOffset, setMsgIdOffset] = useState(0);
   const [currentMsgId, setCurrentMsgId] = useState([]);
-  const [responseHistory, setResponseHistory] = useState([]);
+  const [autoMsgId, setAutoMsgId] = useState(false);
   const [intervalMs, setIntervalMs] = useState(1000);
   const [sendCount, setSendCount] = useState(1);
   const [isSending, setIsSending] = useState(false);
@@ -48,35 +47,7 @@ const usePacketData = (currentTCP) => {
   const hexToBytes = (hex) =>
     (hex.match(/.{1,2}/g) || []).map((b) => parseInt(b, 16));
 
-  const loadHistory = async (packetList = packets) => {
-    if (!currentTCP) return;
-    try {
-      const history = await fetchTCPPacketHistory(currentTCP.id);
-      const mapped = history.map((h) => {
-        const reqBytes = hexToBytes(h.request || "");
-        const respBytes = hexToBytes(h.response || "");
-        const msgIdBytes = reqBytes.slice(msgIdOffset, msgIdOffset + 8);
-        const messageId = bytesToHex(msgIdBytes);
-        const valid =
-          msgIdBytes.length === 8 &&
-          respBytes
-            .slice(msgIdOffset, msgIdOffset + 8)
-            .every((b, i) => b === msgIdBytes[i]);
-        return {
-          packetName: h.packet_name || `패킷 ${h.tcp_packet_id}`,
-          messageId,
-          requestData: reqBytes.map((v, i) => ({ offset: i, value: v })),
-          responseData: respBytes.map((v, i) => ({ offset: i, value: v })),
-          valid,
-        };
-      });
-      setResponseHistory(mapped);
-    } catch (error) {
-      console.error("응답 이력 로드 실패:", error);
-    }
-  };
-
-  const handleGenerateMessageId = () => {
+  const handleGenerateMessageId = async (silent = false) => {
     const id = crypto.getRandomValues(new Uint8Array(8));
     const updated = [...packetData];
     for (let i = 0; i < 8; i++) {
@@ -96,8 +67,11 @@ const usePacketData = (currentTCP) => {
     }
     setPacketData(updated);
     setCurrentMsgId(Array.from(id));
-    autoSave(updated);
-    showAlert("Message ID가 생성되었습니다", "success");
+    await autoSave(updated);
+    if (!silent) {
+      showAlert("Message ID가 생성되었습니다", "success");
+    }
+    return id;
   };
 
   // 패킷 데이터 로드
@@ -115,7 +89,6 @@ const usePacketData = (currentTCP) => {
         setPacketDesc(data[0].desc || "");
         setUseCRC(data[0].use_crc || false);
       }
-      await loadHistory(data);
       console.log("로드된 패킷:", data);
     } catch (error) {
       console.error("패킷 데이터 로드 실패:", error);
@@ -142,33 +115,8 @@ const usePacketData = (currentTCP) => {
         const msg = JSON.parse(event.data);
         if (msg.type === "response") {
           const reqBytes = hexToBytes(msg.request || "");
-          const respBytes = hexToBytes(msg.response || "");
-          const requestFrame = reqBytes.map((v, i) => ({
-            offset: i,
-            value: v,
-          }));
-          const responseFrame = respBytes.map((v, i) => ({
-            offset: i,
-            value: v,
-          }));
           const msgId = reqBytes.slice(msgIdOffset, msgIdOffset + 8);
           setCurrentMsgId(msgId);
-          const valid =
-            msgId.length === 8 &&
-            respBytes
-              .slice(msgIdOffset, msgIdOffset + 8)
-              .every((b, i) => b === msgId[i]);
-          const historyItem = {
-            packetName:
-              msg.packet_name ||
-              selectedPacket?.desc ||
-              `패킷 ${msg.packet_id}`,
-            messageId: bytesToHex(msgId),
-            requestData: requestFrame,
-            responseData: responseFrame,
-            valid,
-          };
-          setResponseHistory((prev) => [historyItem, ...prev]);
         } else if (msg.type === "status") {
           showAlert(`서버 상태: ${msg.status}`, "info");
         } else if (msg.type === "packet_update") {
@@ -879,6 +827,9 @@ const usePacketData = (currentTCP) => {
       setLoading(true);
       if (sendCount === 0) {
         if (!isSending) {
+          if (autoMsgId) {
+            await handleGenerateMessageId(true);
+          }
           await sendTCPPacket(currentTCP.id, selectedPacket.id, intervalMs);
           setIsSending(true);
           showAlert("패킷 전송을 시작합니다", "success");
@@ -889,6 +840,9 @@ const usePacketData = (currentTCP) => {
         }
       } else {
         for (let i = 0; i < sendCount; i++) {
+          if (autoMsgId) {
+            await handleGenerateMessageId(true);
+          }
           await sendTCPPacket(currentTCP.id, selectedPacket.id);
           if (intervalMs > 0 && i < sendCount - 1) {
             await new Promise((res) => setTimeout(res, intervalMs));
@@ -938,7 +892,6 @@ const usePacketData = (currentTCP) => {
     confirmUnchain,
     msgIdOffset,
     currentMsgId,
-    responseHistory,
     intervalMs,
     isSending,
     sendCount,
@@ -971,7 +924,6 @@ const usePacketData = (currentTCP) => {
     handleDeleteRow,
     toggleRowSelection,
     handleContextMenu,
-    handleGenerateMessageId,
     handleSendPacket,
     handleCloseContextMenu,
     showAlert,
@@ -980,6 +932,8 @@ const usePacketData = (currentTCP) => {
     bytesToHex,
     setIntervalMs,
     setSendCount,
+    autoMsgId,
+    setAutoMsgId,
   };
 };
 
