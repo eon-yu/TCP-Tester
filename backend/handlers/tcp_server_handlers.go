@@ -46,7 +46,7 @@ func (h *TCPServerHandler) CreateTCPServer(c *gin.Context) {
 
 	// 같은 이름의 서버가 이미 있는지 확인
 	var existingServer models.TCPServer
-	result := h.DB.Where("name = ?", req.Name).First(&existingServer)
+	result := h.DB.Where("name = ? and deleted_at IS NULL", req.Name).First(&existingServer)
 	if result.RowsAffected > 0 {
 		c.JSON(http.StatusConflict, gin.H{"error": "같은 이름의 TCP 서버가 이미 존재합니다"})
 		return

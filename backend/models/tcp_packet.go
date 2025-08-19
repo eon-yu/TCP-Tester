@@ -81,7 +81,6 @@ func (pd *PacketData) Scan(value interface{}) error {
 		*pd = PacketData{}
 		return nil
 	}
-
 	return json.Unmarshal(bytes, pd)
 }
 
@@ -90,10 +89,10 @@ type TCPPacket struct {
 	ID          uint           `json:"id" gorm:"primaryKey"`
 	TCPServerID uint           `json:"tcp_server_id"`
 	Data        PacketData     `json:"data" gorm:"type:text"`
-	Name        string         `json:"name" gorm:"uniqueIndex"`
+	Name        string         `json:"name" gorm:"index:tcp_packet_name_idx,unique"`
 	Desc        string         `json:"desc"`
 	UseCRC      bool           `json:"use_crc"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
-	DeletedAt   gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+	DeletedAt   gorm.DeletedAt `json:"deleted_at" gorm:"index:tcp_packet_name_idx"`
 }

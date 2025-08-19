@@ -139,6 +139,7 @@ func (p *PacketSender) sendOnce(server models.TCPServer, packet models.TCPPacket
 				"request":     reqHex,
 				"response":    respHex,
 			})
+			log.Printf("Success to send Server[%d] packet %d", packet.TCPServerID, packet.ID)
 			return
 		}
 	}()
